@@ -376,66 +376,37 @@ label.rotulo {
 
       <div class="conteudo-form">
 
-        <!-- ETAPA 1: TELEFONE -->
-        <section class="etapa" id="etapa-telefone" aria-labelledby="t1">
-          <p class="etapa-rotulo">PASSO 1 DE 2</p>
+        <!-- LOGIN POR CPF -->
+        <section class="etapa" id="etapa-login" aria-labelledby="t1">
+          <p class="etapa-rotulo">ACESSO AO PORTAL</p>
           <h2 id="t1">Acesse seu Portal Comercial</h2>
-          <p class="sub">Informe o WhatsApp cadastrado na Agro Hara. É por ele que você receberá seu código de acesso.</p>
+          <p class="sub">Informe o CPF cadastrado para acessar exclusivamente os dados vinculados ao seu perfil comercial.</p>
 
-          <form id="form-telefone" novalidate>
-            <label class="rotulo" for="telefone">WhatsApp cadastrado</label>
-            <div class="campo" id="campo-telefone">
+          <form id="form-login" novalidate>
+            <label class="rotulo" for="cpf">CPF</label>
+            <div class="campo" id="campo-cpf">
               <div class="campo-tel">
-                <span class="ddi"><svg aria-hidden="true"><use href="#i-whats"/></svg>+55</span>
-                <input id="telefone" name="telefone" type="tel" inputmode="numeric"
-                       autocomplete="tel-national" placeholder="(43) 99999-9999"
-                       maxlength="15" aria-describedby="ajuda-tel msg-tel" required>
+                <span class="ddi"><svg aria-hidden="true"><use href="#i-cadeado"/></svg>CPF</span>
+                <input id="cpf" name="cpf" type="text" inputmode="numeric"
+                       autocomplete="username" placeholder="000.000.000-00"
+                       maxlength="14" aria-describedby="ajuda-cpf msg-login" required>
               </div>
             </div>
-            <p class="ajuda" id="ajuda-tel">Digite o número usado no seu cadastro de representante.</p>
-            <div class="mensagem" id="msg-tel" role="alert" aria-live="assertive"></div>
-
-            <button class="botao" id="btn-enviar" type="submit">
-              <span class="spinner" aria-hidden="true"></span>
-              <svg class="icone" aria-hidden="true"><use href="#i-whats"/></svg>
-              <span class="texto">Receber código no WhatsApp</span>
-            </button>
-          </form>
-        </section>
-
-        <!-- ETAPA 2: CÓDIGO -->
-        <section class="etapa" id="etapa-codigo" aria-labelledby="t2" hidden>
-          <p class="etapa-rotulo">PASSO 2 DE 2</p>
-          <h2 id="t2">Confirme seu acesso</h2>
-          <p class="sub">Você receberá um código de 6 dígitos no WhatsApp <strong class="js-tel-exibido">—</strong>.</p>
-
-          <form id="form-codigo" novalidate>
-            <label class="rotulo" for="codigo">Código recebido</label>
-            <div class="campo" id="campo-codigo">
-              <input class="otp" id="codigo" name="codigo" type="text" inputmode="numeric"
-                     autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6"
-                     placeholder="••••••" aria-describedby="contador msg-cod" required>
-            </div>
-            <p class="ajuda contador" id="contador" aria-live="polite">Código válido por <b>05:00</b></p>
-            <div class="mensagem" id="msg-cod" role="alert" aria-live="assertive"></div>
+            <p class="ajuda" id="ajuda-cpf">Use o CPF vinculado ao seu cadastro de representante.</p>
+            <div class="mensagem" id="msg-login" role="alert" aria-live="assertive"></div>
 
             <button class="botao" id="btn-entrar" type="submit">
               <span class="spinner" aria-hidden="true"></span>
               <svg class="icone" aria-hidden="true"><use href="#i-seta"/></svg>
-              <span class="texto">Entrar</span>
+              <span class="texto">Entrar no portal</span>
             </button>
-
-            <div class="linha-acoes">
-              <button type="button" class="link" id="btn-trocar">Trocar número</button>
-              <button type="button" class="link" id="btn-reenviar" disabled>Reenviar em 60s</button>
-            </div>
           </form>
         </section>
 
         <div class="rodape-form">
           <div class="seg"><svg aria-hidden="true"><use href="#i-cadeado"/></svg><span>Acesso exclusivo para representantes cadastrados. Você verá somente os seus dados.</span></div>
           <div class="seg"><svg aria-hidden="true"><use href="#i-relogio"/></svg><span>Dados atualizados todos os dias, com a posição das 21h do dia anterior.</span></div>
-          <div class="seg"><svg aria-hidden="true"><use href="#i-alerta"/></svg><span>Não recebeu o código ou trocou de número? Fale com o <a href="#" class="js-contato" style="color:var(--verde-marca);font-weight:600">suporte comercial</a>.</span></div>
+          <div class="seg"><svg aria-hidden="true"><use href="#i-alerta"/></svg><span>CPF não reconhecido ou acesso indisponível? Fale com o <a href="#" class="js-contato" style="color:var(--verde-marca);font-weight:600">suporte comercial</a>.</span></div>
         </div>
 
       </div>
@@ -443,24 +414,18 @@ label.rotulo {
   </main>
 </div>
 
-<div class="demo-aviso" id="demo-aviso" hidden>MODO DEMONSTRAÇÃO · código 123456</div>
+<div class="demo-aviso" id="demo-aviso" hidden>MODO DEMONSTRAÇÃO</div>
 
 <script>
 /* =====================================================================
-   CONFIGURAÇÃO
+   LOGIN POR CPF
    ---------------------------------------------------------------------
-   Contrato esperado da API (documentação, seção 25):
-
-   POST /auth/request-code   body: { "telefone": "5543999999999" }
-     200 -> { "ok": true, "expira_em_segundos": 300, "reenviar_em_segundos": 60 }
-     429 -> { "erro": "Muitas solicitações. Aguarde alguns minutos." }
-
-   POST /auth/verify-code    body: { "telefone": "...", "codigo": "483921" }
+   POST /auth/login   body: { "cpf": "00000000000" }
      200 -> { "status": "ok", "access_token": "...", "token_type": "bearer" }
-     401 -> { "erro": "...", "tentativas_restantes": 2 }
-     410 -> { "erro": "Código expirado." }
+     401 -> { "detail": "CPF nao autorizado." }
 
-   O frontend NUNCA envia cod_rep: o representante vem da sessão.
+   O frontend NUNCA envia cod_rep: os representantes autorizados vêm da
+   identidade associada ao CPF no backend.
    ===================================================================== */
 const CONFIG = {
   API_BASE: "https://portal-agrohara.onrender.com",
@@ -470,32 +435,36 @@ const CONFIG = {
   TOKEN_KEY: "portal_agrohara_access_token",
 };
 
-/* ---------- utilitários ---------- */
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => document.querySelectorAll(s);
 
-function soDigitos(v) { return (v || "").replace(/\D/g, ""); }
-
-function mascaraTelefone(v) {
-  let d = soDigitos(v);
-  if (d.startsWith("55") && d.length > 11) d = d.slice(2);  // colou com +55
-  d = d.slice(0, 11);
-  if (d.length <= 2) return d.length ? `(${d}` : "";
-  if (d.length <= 7) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
-  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+function soDigitos(v) {
+  return (v || "").replace(/\D/g, "");
 }
 
-// mesma regra do banco: 55 + DDD(11–99) + 9 + 8 dígitos
-function normalizarE164(v) {
-  let d = soDigitos(v);
-  if (d.startsWith("55") && d.length === 13) d = d.slice(2);
-  if (!/^[1-9][1-9]9\d{8}$/.test(d)) return null;
-  return "55" + d;
+function mascaraCPF(v) {
+  const d = soDigitos(v).slice(0, 11);
+  if (d.length <= 3) return d;
+  if (d.length <= 6) return `${d.slice(0, 3)}.${d.slice(3)}`;
+  if (d.length <= 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`;
+  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
 }
 
-function mmss(s) {
-  const m = Math.floor(s / 60), r = s % 60;
-  return `${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
+function cpfValido(valor) {
+  const cpf = soDigitos(valor);
+  if (!/^\d{11}$/.test(cpf)) return false;
+  if (/^(\d)\1{10}$/.test(cpf)) return false;
+
+  for (const tamanho of [9, 10]) {
+    let soma = 0;
+    for (let i = 0; i < tamanho; i++) {
+      soma += Number(cpf[i]) * (tamanho + 1 - i);
+    }
+    let digito = (soma * 10) % 11;
+    if (digito === 10) digito = 0;
+    if (digito !== Number(cpf[tamanho])) return false;
+  }
+  return true;
 }
 
 function mostrarMsg(el, tipo, texto) {
@@ -504,205 +473,110 @@ function mostrarMsg(el, tipo, texto) {
   el.innerHTML = `<svg aria-hidden="true"><use href="${icone}"/></svg><span></span>`;
   el.querySelector("span").textContent = texto;
 }
-function limparMsg(el) { el.className = "mensagem"; el.textContent = ""; }
 
-function carregando(btn, sim, textoCarregando) {
-  const t = btn.querySelector(".texto");
-  if (sim) { btn.dataset.texto = t.textContent; t.textContent = textoCarregando; }
-  else if (btn.dataset.texto) { t.textContent = btn.dataset.texto; }
-  btn.classList.toggle("carregando", sim);
-  btn.disabled = sim;
+function limparMsg(el) {
+  el.className = "mensagem";
+  el.textContent = "";
 }
 
-/* ---------- API (real ou simulada) ---------- */
+function carregando(btn, ativo, texto) {
+  btn.disabled = ativo;
+  btn.classList.toggle("carregando", ativo);
+  const span = btn.querySelector(".texto");
+  if (ativo) {
+    btn.dataset.textoOriginal = span.textContent;
+    span.textContent = texto;
+  } else {
+    span.textContent = btn.dataset.textoOriginal || "Entrar no portal";
+  }
+}
+
 async function chamarApi(caminho, corpo) {
-  if (CONFIG.MODO_DEMO) return apiDemo(caminho, corpo);
-  const r = await fetch(CONFIG.API_BASE + caminho, {
+  if (CONFIG.MODO_DEMO) {
+    return {
+      status: 200,
+      dados: {
+        status: "ok",
+        access_token: "token-demo",
+        token_type: "bearer"
+      }
+    };
+  }
+
+  const resposta = await fetch(CONFIG.API_BASE + caminho, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(corpo),
+    cache: "no-store"
   });
+
   let dados = {};
-  try { dados = await r.json(); } catch (_) {}
-  return { status: r.status, dados };
+  try {
+    dados = await resposta.json();
+  } catch (_) {}
+
+  return { status: resposta.status, dados };
 }
 
-let demoTentativas = 3;
-async function apiDemo(caminho, corpo) {
-  await new Promise((r) => setTimeout(r, 700));
-  if (caminho === "/auth/request-code") {
-    demoTentativas = 3;
-    return { status: 200, dados: { ok: true, expira_em_segundos: 300, reenviar_em_segundos: 60 } };
+$("#cpf").addEventListener("input", (ev) => {
+  ev.target.value = mascaraCPF(ev.target.value);
+  $("#campo-cpf").classList.remove("campo-erro");
+  limparMsg($("#msg-login"));
+});
+
+$("#form-login").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+
+  const cpf = soDigitos($("#cpf").value);
+  const msg = $("#msg-login");
+  const btn = $("#btn-entrar");
+
+  if (!cpfValido(cpf)) {
+    $("#campo-cpf").classList.add("campo-erro");
+    mostrarMsg(msg, "erro", "Informe um CPF válido.");
+    $("#cpf").focus();
+    return;
   }
-  if (caminho === "/auth/verify-code") {
-    if (corpo.codigo === "123456") return { status: 200, dados: { ok: true } };
-    demoTentativas -= 1;
-    return { status: 401, dados: { erro: "Código incorreto.", tentativas_restantes: Math.max(demoTentativas, 0) } };
-  }
-  return { status: 404, dados: {} };
-}
 
-/* ---------- estado ---------- */
-let telefoneE164 = null;
-let timerExpira = null, timerReenvio = null;
+  carregando(btn, true, "Entrando...");
 
-function irPara(etapa) {
-  $("#etapa-telefone").hidden = etapa !== "telefone";
-  $("#etapa-codigo").hidden = etapa !== "codigo";
-  (etapa === "telefone" ? $("#telefone") : $("#codigo")).focus();
-}
+  try {
+    const { status, dados } = await chamarApi("/auth/login", { cpf });
 
-function iniciarContadores(expira = 300, reenviar = 60) {
-  clearInterval(timerExpira); clearInterval(timerReenvio);
-  const cont = $("#contador"), btnR = $("#btn-reenviar");
-  let e = expira, r = reenviar;
+    if (status === 200 && dados.access_token) {
+      sessionStorage.setItem(CONFIG.TOKEN_KEY, dados.access_token);
+      mostrarMsg(msg, "info", "Acesso liberado. Carregando seu portal...");
 
-  cont.classList.remove("expirado");
-  cont.innerHTML = `Código válido por <b>${mmss(e)}</b>`;
-  timerExpira = setInterval(() => {
-    e -= 1;
-    if (e <= 0) {
-      clearInterval(timerExpira);
-      cont.classList.add("expirado");
-      cont.innerHTML = `<b>Código expirado.</b> Solicite um novo.`;
-      $("#btn-entrar").disabled = true;
+      setTimeout(() => {
+        if (CONFIG.MODO_DEMO) {
+          carregando(btn, false);
+          return;
+        }
+        window.location.assign(CONFIG.REDIRECT_APOS_LOGIN);
+      }, 350);
       return;
     }
-    cont.innerHTML = `Código válido por <b>${mmss(e)}</b>`;
-  }, 1000);
 
-  btnR.disabled = true;
-  btnR.textContent = `Reenviar em ${r}s`;
-  timerReenvio = setInterval(() => {
-    r -= 1;
-    if (r <= 0) { clearInterval(timerReenvio); btnR.disabled = false; btnR.textContent = "Reenviar código"; return; }
-    btnR.textContent = `Reenviar em ${r}s`;
-  }, 1000);
-}
-
-/* ---------- etapa 1: telefone ---------- */
-$("#telefone").addEventListener("input", (ev) => {
-  ev.target.value = mascaraTelefone(ev.target.value);
-  $("#campo-telefone").classList.remove("campo-erro");
-  limparMsg($("#msg-tel"));
-});
-
-async function solicitarCodigo(origem) {
-  const btn = origem === "reenviar" ? null : $("#btn-enviar");
-  const msg = origem === "reenviar" ? $("#msg-cod") : $("#msg-tel");
-  if (btn) carregando(btn, true, "Enviando...");
-  try {
-    const { status, dados } = await chamarApi("/auth/request-code", { telefone: telefoneE164 });
-    if (status === 200) {
-      const numeroVisual = mascaraTelefone(telefoneE164.slice(2));
-      const finalNumero = numeroVisual.slice(-4);
-      $(".js-tel-exibido").textContent = "terminado em " + finalNumero;
-      $("#codigo").value = "";
-      $("#btn-entrar").disabled = false;
-      if (origem === "reenviar") { mostrarMsg(msg, "info", "Novo código solicitado. Confira seu WhatsApp."); $("#codigo").focus(); }
-      else irPara("codigo");
-      iniciarContadores(dados.expira_em_segundos || 300, dados.reenviar_em_segundos || 60);
-    } else if (status === 429) {
-      mostrarMsg(msg, "erro", dados.detail || dados.erro || "Muitas tentativas. Aguarde alguns minutos e tente de novo.");
-    } else {
-      mostrarMsg(msg, "erro", dados.detail || dados.erro || "Não foi possível enviar o código agora. Tente novamente.");
+    if (status === 401 || status === 400) {
+      $("#campo-cpf").classList.add("campo-erro");
+      mostrarMsg(msg, "erro", "CPF não autorizado. Confira o número informado ou fale com o suporte comercial.");
+      $("#cpf").focus();
+      return;
     }
+
+    mostrarMsg(msg, "erro", dados.detail || "Não foi possível realizar o acesso agora. Tente novamente.");
   } catch (_) {
-    mostrarMsg(msg, "erro", "Sem conexão com o servidor. Verifique o sinal/internet e tente novamente.");
+    mostrarMsg(msg, "erro", "Sem conexão com o servidor. Verifique sua internet e tente novamente.");
   } finally {
-    if (btn) carregando(btn, false);
-  }
-}
-
-$("#form-telefone").addEventListener("submit", (ev) => {
-  ev.preventDefault();
-  const e164 = normalizarE164($("#telefone").value);
-  if (!e164) {
-    $("#campo-telefone").classList.add("campo-erro");
-    mostrarMsg($("#msg-tel"), "erro", "Informe um celular válido com DDD. Ex.: (43) 99999-9999");
-    $("#telefone").focus();
-    return;
-  }
-  telefoneE164 = e164;
-  solicitarCodigo("enviar");
-});
-
-/* ---------- etapa 2: código ---------- */
-$("#codigo").addEventListener("input", (ev) => {
-  ev.target.value = soDigitos(ev.target.value).slice(0, 6);
-  $("#campo-codigo").classList.remove("campo-erro");
-  limparMsg($("#msg-cod"));
-  if (ev.target.value.length === 6 && !$("#btn-entrar").disabled) $("#form-codigo").requestSubmit();
-});
-
-$("#form-codigo").addEventListener("submit", async (ev) => {
-  ev.preventDefault();
-  const codigo = $("#codigo").value;
-  const msg = $("#msg-cod"), btn = $("#btn-entrar");
-  if (!/^\d{6}$/.test(codigo)) {
-    $("#campo-codigo").classList.add("campo-erro");
-    mostrarMsg(msg, "erro", "Digite os 6 números recebidos no WhatsApp.");
-    return;
-  }
-  carregando(btn, true, "Verificando...");
-  let sucesso = false;
-  try {
-    const { status, dados } = await chamarApi("/auth/verify-code", { telefone: telefoneE164, codigo });
-    if (status === 200) {
-      if (!dados.access_token) {
-        mostrarMsg(msg, "erro", "A API não retornou a sessão de acesso.");
-        carregando(btn, false);
-        return;
-      }
-      sessionStorage.setItem(CONFIG.TOKEN_KEY, dados.access_token);
-      sucesso = true;
-      clearInterval(timerExpira); clearInterval(timerReenvio);
-      mostrarMsg(msg, "info", "Acesso liberado. Carregando seu portal...");
-      btn.querySelector(".texto").textContent = "Entrando...";
-      setTimeout(() => {
-        if (CONFIG.MODO_DEMO) { mostrarMsg(msg, "info", "Login simulado com sucesso (modo demonstração)."); btn.querySelector(".texto").textContent = "Entrar"; btn.classList.remove("carregando"); return; }
-        window.location.assign(CONFIG.REDIRECT_APOS_LOGIN);
-      }, 600);
-    } else if (status === 410) {
-      mostrarMsg(msg, "erro", dados.detail || dados.erro || "Código expirado. Toque em “Reenviar código”.");
-    } else if (status === 401 || status === 400) {
-      $("#campo-codigo").classList.add("campo-erro");
-      const rest = dados.tentativas_restantes;
-      if (rest === 0) {
-        mostrarMsg(msg, "erro", "Limite de tentativas atingido. Solicite um novo código.");
-        btn.disabled = true;
-        sucesso = true; // mantém o botão bloqueado
-        clearInterval(timerReenvio); $("#btn-reenviar").disabled = false; $("#btn-reenviar").textContent = "Reenviar código";
-      } else {
-        mostrarMsg(msg, "erro", `Código incorreto.${rest != null ? ` Restam ${rest} tentativa${rest === 1 ? "" : "s"}.` : ""}`);
-      }
-      $("#codigo").select();
-    } else if (status === 429) {
-      mostrarMsg(msg, "erro", dados.detail || dados.erro || "Muitas tentativas. Aguarde alguns minutos.");
-    } else {
-      mostrarMsg(msg, "erro", dados.detail || dados.erro || "Não foi possível validar o código. Tente novamente.");
-    }
-  } catch (_) {
-    mostrarMsg(msg, "erro", "Sem conexão com o servidor. Verifique o sinal/internet e tente novamente.");
-  } finally {
-    if (!sucesso) carregando(btn, false);
-    else btn.classList.remove("carregando");
+    carregando(btn, false);
   }
 });
 
-$("#btn-reenviar").addEventListener("click", () => solicitarCodigo("reenviar"));
-
-$("#btn-trocar").addEventListener("click", () => {
-  clearInterval(timerExpira); clearInterval(timerReenvio);
-  limparMsg($("#msg-cod"));
-  $("#codigo").value = "";
-  irPara("telefone");
-});
-
-/* ---------- inicialização ---------- */
+/* Ao abrir a tela de login, inicia uma nova autenticação local. */
 if (!CONFIG.MODO_DEMO) sessionStorage.removeItem(CONFIG.TOKEN_KEY);
-$$(".js-contato").forEach((a) => (a.href = CONFIG.CONTATO_SUPORTE));
+$$('.js-contato').forEach((a) => (a.href = CONFIG.CONTATO_SUPORTE));
 if (CONFIG.MODO_DEMO) $("#demo-aviso").hidden = false;
+$("#cpf").focus();
 </script>
 </body>
 </html>

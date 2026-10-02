@@ -538,8 +538,8 @@ main { max-width: 1180px; margin: -44px auto 0; padding: 0 16px calc(96px + env(
    Nesta versão homologada a página usa Bearer token salvo em sessionStorage.
    O frontend NUNCA envia cod_rep: a API usa o representante da sessão.
 
-   GET /api/me    -> { nome, representante, data_referencia }
-   GET /api/vendas/itens?de=AAAA-MM-DD&ate=AAAA-MM-DD
+   GET /me    -> { nome, representante, data_referencia }
+   GET /vendas/itens?de=AAAA-MM-DD&ate=AAAA-MM-DD
        -> [{ estab, seqnota, nota, serie, tipo_mov, dtemissao, prazopagto,
              cod_cliente, cliente_nome, cod_grupo, grupo_familiar, cliente_final,
              item_cod, item, unidade,
@@ -550,7 +550,7 @@ main { max-width: 1180px; margin: -44px auto 0; padding: 0 16px calc(96px + env(
    ===================================================================== */
 const CONFIG = {
   API_BASE: "https://portal-agrohara.onrender.com",
-  URL_LOGIN: "login.html",
+  URL_LOGIN: "index.html",
   INICIO_DADOS: "2024-01-01",
   PRIMEIRA_SAFRA: 2024,
   MODO_DEMO: false,
