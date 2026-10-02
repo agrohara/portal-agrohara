@@ -7,19 +7,19 @@ import secrets
 import hashlib
 import psycopg
 
-from pathlib import Path
 from datetime import date, timedelta
 
 from fastapi import FastAPI
 from fastapi import HTTPException
 from fastapi import Header
+from fastapi import Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 
 app = FastAPI(
     title="Portal AgroHara API",
-    version="2.0.0"
+    version="2.1.0"
 )
 
 app.add_middleware(
@@ -61,11 +61,8 @@ def conectar_banco():
 
 
 # ============================================================
-# ACESSOS - ARQUIVO DO GITHUB
+# ACESSOS - POSTGRESQL
 # ============================================================
-
-ACESSOS_PATH = Path(__file__).with_name("acessos.json")
-
 
 def normalizar_cpf(valor):
     digitos = re.sub(r"\D", "", str(valor or ""))
@@ -108,104 +105,136 @@ def hash_cpf(cpf):
     ).hexdigest()
 
 
-def carregar_acessos():
-    # No Render, preferimos manter a lista de acessos fora do repositorio
-    # publico, na variavel PORTAL_ACESSOS_JSON. Na .60, o fallback continua
-    # sendo o arquivo local acessos.json ja homologado.
-    acessos_json = os.environ.get("PORTAL_ACESSOS_JSON")
+def buscar_acesso_por_hash(cpf_hash):
+    con = conectar_banco()
+    cur = con.cursor()
 
     try:
-        if acessos_json:
-            dados = json.loads(acessos_json)
-        else:
-            if not ACESSOS_PATH.exists():
-                raise RuntimeError(
-                    "PORTAL_ACESSOS_JSON/acessos.json nao configurado."
-                )
+        cur.execute("""
+            SELECT
+                a.id_acesso,
+                a.cpf_hash,
+                a.representante,
+                a.perfil,
+                ARRAY_AGG(
+                    ar.cod_rep
+                    ORDER BY ar.cod_rep
+                ) AS cod_reps
+            FROM portal.acessos a
 
-            dados = json.loads(
-                ACESSOS_PATH.read_text(encoding="utf-8")
+            INNER JOIN portal.acesso_representantes ar
+                ON ar.id_acesso = a.id_acesso
+
+            WHERE a.cpf_hash = %s
+              AND a.ativo = true
+
+            GROUP BY
+                a.id_acesso,
+                a.cpf_hash,
+                a.representante,
+                a.perfil
+
+            LIMIT 1
+        """, (cpf_hash,))
+
+        r = cur.fetchone()
+
+    finally:
+        con.close()
+
+    if not r:
+        return None
+
+    cod_reps = [
+        int(codigo)
+        for codigo in (r[4] or [])
+    ]
+
+    if not cod_reps:
+        return None
+
+    return {
+        "id_acesso": r[0],
+        "cpf_hash": str(r[1]).strip().lower(),
+        "representante": r[2],
+        "perfil": str(r[3] or "VENDEDOR").strip().upper(),
+        "cod_reps": cod_reps
+    }
+
+
+def dados_requisicao(request):
+    if request is None:
+        return None, None
+
+    xff = str(
+        request.headers.get("x-forwarded-for", "")
+    ).strip()
+
+    if xff:
+        ip = xff.split(",", 1)[0].strip()
+    elif request.client:
+        ip = request.client.host
+    else:
+        ip = None
+
+    if ip:
+        ip = ip[:64]
+
+    user_agent = str(
+        request.headers.get("user-agent", "")
+    ).strip() or None
+
+    return ip, user_agent
+
+
+def registrar_log(
+    evento,
+    request=None,
+    id_acesso=None,
+    cpf_hash=None,
+    detalhe=None,
+    cur=None
+):
+    ip, user_agent = dados_requisicao(request)
+
+    criou_conexao = cur is None
+    con = None
+
+    if criou_conexao:
+        con = conectar_banco()
+        cur = con.cursor()
+
+    try:
+        cur.execute("""
+            INSERT INTO portal.acessos_log (
+                id_acesso,
+                evento,
+                cpf_hash,
+                ip,
+                user_agent,
+                detalhe
             )
-    except RuntimeError:
-        raise
-    except Exception as exc:
-        raise RuntimeError(
-            "Configuracao de acessos invalida."
-        ) from exc
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """, (
+            id_acesso,
+            evento,
+            cpf_hash,
+            ip,
+            user_agent,
+            detalhe
+        ))
 
-    acessos = dados.get("acessos", [])
+        if criou_conexao:
+            con.commit()
 
-    if not isinstance(acessos, list):
-        raise RuntimeError(
-            "Estrutura de acessos.json invalida."
-        )
+    except Exception:
+        if criou_conexao and con:
+            con.rollback()
+        # Falha de auditoria nao pode derrubar o login/logout.
 
-    resultado = []
-
-    for item in acessos:
-        if not isinstance(item, dict):
-            continue
-
-        if item.get("ativo", True) is False:
-            continue
-
-        cpf_hash = str(
-            item.get("cpf_hash", "")
-        ).strip().lower()
-
-        representante = str(
-            item.get("representante", "")
-        ).strip()
-
-        cod_reps_brutos = item.get(
-            "cod_reps",
-            []
-        )
-
-        if not re.fullmatch(r"[0-9a-f]{64}", cpf_hash):
-            continue
-
-        if not representante:
-            continue
-
-        if not isinstance(cod_reps_brutos, list):
-            continue
-
-        cod_reps = []
-
-        for valor in cod_reps_brutos:
-            try:
-                codigo = int(valor)
-            except (TypeError, ValueError):
-                continue
-
-            if codigo not in cod_reps:
-                cod_reps.append(codigo)
-
-        if not cod_reps:
-            continue
-
-        resultado.append({
-            "cpf_hash": cpf_hash,
-            "representante": representante,
-            "cod_reps": cod_reps,
-            "perfil": str(
-                item.get("perfil", "VENDEDOR")
-            ).strip().upper() or "VENDEDOR"
-        })
-
-    return resultado
-
-
-def buscar_acesso_por_hash(cpf_hash):
-    for acesso in carregar_acessos():
-        if hmac.compare_digest(
-            acesso["cpf_hash"],
-            cpf_hash
-        ):
-            return acesso
-
-    return None
+    finally:
+        if criou_conexao and con:
+            con.close()
 
 
 # ============================================================
@@ -440,6 +469,7 @@ def validar_sessao(authorization):
 
     return {
         "id_sessao": sessao[0],
+        "id_acesso": acesso["id_acesso"],
         "id_usuario": acesso["cod_reps"][0],
         "representante": acesso["representante"],
         "perfil": acesso["perfil"],
@@ -453,13 +483,19 @@ def validar_sessao(authorization):
 # ============================================================
 
 @app.post("/auth/login")
-def login_cpf(dados: LoginCPF):
+def login_cpf(dados: LoginCPF, request: Request):
     try:
         cpf = normalizar_cpf(
             dados.cpf
         )
 
     except ValueError:
+        registrar_log(
+            "LOGIN_NEGADO",
+            request=request,
+            detalhe="CPF invalido."
+        )
+
         raise HTTPException(
             status_code=401,
             detail="CPF nao autorizado."
@@ -474,6 +510,13 @@ def login_cpf(dados: LoginCPF):
     )
 
     if not acesso:
+        registrar_log(
+            "LOGIN_NEGADO",
+            request=request,
+            cpf_hash=cpf_hash,
+            detalhe="CPF nao cadastrado ou acesso inativo."
+        )
+
         raise HTTPException(
             status_code=401,
             detail="CPF nao autorizado."
@@ -521,7 +564,20 @@ def login_cpf(dados: LoginCPF):
 
         sessao = cur.fetchone()
 
+        registrar_log(
+            "LOGIN_SUCESSO",
+            request=request,
+            id_acesso=acesso["id_acesso"],
+            cpf_hash=cpf_hash,
+            detalhe=f"id_sessao={sessao[0]}",
+            cur=cur
+        )
+
         con.commit()
+
+    except Exception:
+        con.rollback()
+        raise
 
     finally:
         con.close()
@@ -1070,6 +1126,7 @@ def vendas_itens(
 
 @app.post("/auth/logout")
 def logout(
+    request: Request,
     authorization: str | None = Header(default=None)
 ):
     usuario = validar_sessao(
@@ -1079,22 +1136,39 @@ def logout(
     con = conectar_banco()
     cur = con.cursor()
 
-    cur.execute("""
-        UPDATE portal.sessoes
-           SET ativo = false,
-               revogado_em = COALESCE(
-                   revogado_em,
-                   now()
-               )
-         WHERE id_sessao = %s
-    """, (
-        usuario["id_sessao"],
-    ))
+    try:
+        cur.execute("""
+            UPDATE portal.sessoes
+               SET ativo = false,
+                   revogado_em = COALESCE(
+                       revogado_em,
+                       now()
+                   )
+             WHERE id_sessao = %s
+        """, (
+            usuario["id_sessao"],
+        ))
 
-    con.commit()
-    con.close()
+        registrar_log(
+            "LOGOUT",
+            request=request,
+            id_acesso=usuario["id_acesso"],
+            cpf_hash=usuario["cpf_hash"],
+            detalhe=f"id_sessao={usuario['id_sessao']}",
+            cur=cur
+        )
+
+        con.commit()
+
+    except Exception:
+        con.rollback()
+        raise
+
+    finally:
+        con.close()
 
     return {
         "status": "ok",
         "mensagem": "Sessao encerrada."
     }
+
