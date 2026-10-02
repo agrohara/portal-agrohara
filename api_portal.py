@@ -41,6 +41,21 @@ class LoginCPF(BaseModel):
     cpf: str
 
 
+class AdminAcessoCriar(BaseModel):
+    cpf: str
+    cod_reps: list[int]
+    perfil: str = "VENDEDOR"
+    admin: bool = False
+
+
+class AdminStatusAlterar(BaseModel):
+    ativo: bool
+
+
+class AdminVinculosAlterar(BaseModel):
+    cod_reps: list[int]
+
+
 # ============================================================
 # BANCO
 # ============================================================
@@ -116,6 +131,7 @@ def buscar_acesso_por_hash(cpf_hash):
                 a.cpf_hash,
                 a.representante,
                 a.perfil,
+                a.admin,
                 ARRAY_AGG(
                     ar.cod_rep
                     ORDER BY ar.cod_rep
@@ -132,7 +148,8 @@ def buscar_acesso_por_hash(cpf_hash):
                 a.id_acesso,
                 a.cpf_hash,
                 a.representante,
-                a.perfil
+                a.perfil,
+                a.admin
 
             LIMIT 1
         """, (cpf_hash,))
@@ -147,7 +164,7 @@ def buscar_acesso_por_hash(cpf_hash):
 
     cod_reps = [
         int(codigo)
-        for codigo in (r[4] or [])
+        for codigo in (r[5] or [])
     ]
 
     if not cod_reps:
@@ -158,6 +175,7 @@ def buscar_acesso_por_hash(cpf_hash):
         "cpf_hash": str(r[1]).strip().lower(),
         "representante": r[2],
         "perfil": str(r[3] or "VENDEDOR").strip().upper(),
+        "admin": bool(r[4]),
         "cod_reps": cod_reps
     }
 
@@ -473,6 +491,7 @@ def validar_sessao(authorization):
         "id_usuario": acesso["cod_reps"][0],
         "representante": acesso["representante"],
         "perfil": acesso["perfil"],
+        "admin": acesso["admin"],
         "cod_reps": acesso["cod_reps"],
         "cpf_hash": cpf_hash
     }
@@ -590,7 +609,8 @@ def login_cpf(dados: LoginCPF, request: Request):
         "usuario": {
             "id_usuario": acesso["cod_reps"][0],
             "representante": acesso["representante"],
-            "perfil": acesso["perfil"]
+            "perfil": acesso["perfil"],
+            "admin": acesso["admin"]
         }
     }
 
@@ -674,10 +694,685 @@ def me(
         "nome": usuario["representante"],
         "representante": usuario["representante"],
         "perfil": usuario["perfil"],
+        "admin": usuario["admin"],
         "data_referencia": data_referencia
     }
 
 
+
+
+
+# ============================================================
+# ADMINISTRACAO
+# ============================================================
+
+def exigir_admin(authorization):
+    usuario = validar_sessao(
+        authorization
+    )
+
+    if not usuario.get("admin"):
+        raise HTTPException(
+            status_code=403,
+            detail="Acesso administrativo nao autorizado."
+        )
+
+    return usuario
+
+
+def validar_cod_reps(cur, cod_reps):
+    codigos = []
+
+    for valor in (cod_reps or []):
+        try:
+            codigo = int(valor)
+        except Exception:
+            raise HTTPException(
+                status_code=400,
+                detail="COD_REP invalido."
+            )
+
+        if codigo <= 0:
+            raise HTTPException(
+                status_code=400,
+                detail="COD_REP invalido."
+            )
+
+        if codigo not in codigos:
+            codigos.append(codigo)
+
+    if not codigos:
+        raise HTTPException(
+            status_code=400,
+            detail="Informe pelo menos um COD_REP."
+        )
+
+    if len(codigos) > 50:
+        raise HTTPException(
+            status_code=400,
+            detail="Quantidade de COD_REP acima do permitido."
+        )
+
+    cur.execute("""
+        SELECT
+            cod_rep,
+            MAX(representante) AS representante
+        FROM portal.vendas
+        WHERE cod_rep = ANY(%s::integer[])
+        GROUP BY cod_rep
+        ORDER BY cod_rep
+    """, (codigos,))
+
+    encontrados = {
+        int(r[0]): str(r[1] or "").strip()
+        for r in cur.fetchall()
+    }
+
+    faltantes = [
+        codigo
+        for codigo in codigos
+        if codigo not in encontrados
+    ]
+
+    if faltantes:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "COD_REP nao encontrado em portal.vendas: "
+                + ", ".join(str(x) for x in faltantes)
+            )
+        )
+
+    nomes = []
+
+    for codigo in codigos:
+        nome = encontrados[codigo]
+
+        if nome and nome not in nomes:
+            nomes.append(nome)
+
+    representante = (
+        nomes[0]
+        if len(nomes) == 1
+        else " / ".join(nomes)
+    )
+
+    if not representante:
+        representante = (
+            "COD_REP "
+            + ", ".join(str(x) for x in codigos)
+        )
+
+    return codigos, representante
+
+
+@app.get("/admin/representantes")
+def admin_representantes(
+    q: str = "",
+    authorization: str | None = Header(default=None)
+):
+    exigir_admin(
+        authorization
+    )
+
+    termo = str(q or "").strip()
+
+    if len(termo) > 100:
+        raise HTTPException(
+            status_code=400,
+            detail="Pesquisa muito longa."
+        )
+
+    con = conectar_banco()
+    cur = con.cursor()
+
+    try:
+        if termo:
+            cur.execute("""
+                SELECT
+                    cod_rep,
+                    representante,
+                    COUNT(*) AS linhas,
+                    MIN(dtemissao) AS primeira_venda,
+                    MAX(dtemissao) AS ultima_venda
+                FROM portal.vendas
+                WHERE cod_rep IS NOT NULL
+                  AND representante IS NOT NULL
+                  AND (
+                        representante ILIKE %s
+                        OR cod_rep::text = %s
+                      )
+                GROUP BY
+                    cod_rep,
+                    representante
+                ORDER BY
+                    representante,
+                    cod_rep
+                LIMIT 100
+            """, (
+                "%" + termo + "%",
+                termo
+            ))
+        else:
+            cur.execute("""
+                SELECT
+                    cod_rep,
+                    representante,
+                    COUNT(*) AS linhas,
+                    MIN(dtemissao) AS primeira_venda,
+                    MAX(dtemissao) AS ultima_venda
+                FROM portal.vendas
+                WHERE cod_rep IS NOT NULL
+                  AND representante IS NOT NULL
+                GROUP BY
+                    cod_rep,
+                    representante
+                ORDER BY
+                    representante,
+                    cod_rep
+                LIMIT 100
+            """)
+
+        linhas = cur.fetchall()
+
+    finally:
+        con.close()
+
+    return [
+        {
+            "cod_rep": int(r[0]),
+            "representante": r[1],
+            "linhas": r[2],
+            "primeira_venda": r[3],
+            "ultima_venda": r[4]
+        }
+        for r in linhas
+    ]
+
+
+@app.get("/admin/acessos")
+def admin_listar_acessos(
+    authorization: str | None = Header(default=None)
+):
+    exigir_admin(
+        authorization
+    )
+
+    con = conectar_banco()
+    cur = con.cursor()
+
+    try:
+        cur.execute("""
+            SELECT
+                a.id_acesso,
+                a.representante,
+                a.perfil,
+                a.ativo,
+                a.admin,
+                COALESCE(
+                    ARRAY_AGG(
+                        ar.cod_rep
+                        ORDER BY ar.cod_rep
+                    ) FILTER (
+                        WHERE ar.cod_rep IS NOT NULL
+                    ),
+                    ARRAY[]::integer[]
+                ) AS cod_reps,
+                a.criado_em,
+                a.atualizado_em
+            FROM portal.acessos a
+
+            LEFT JOIN portal.acesso_representantes ar
+                ON ar.id_acesso = a.id_acesso
+
+            GROUP BY
+                a.id_acesso,
+                a.representante,
+                a.perfil,
+                a.ativo,
+                a.admin,
+                a.criado_em,
+                a.atualizado_em
+
+            ORDER BY
+                a.ativo DESC,
+                a.representante,
+                a.id_acesso
+        """)
+
+        linhas = cur.fetchall()
+
+    finally:
+        con.close()
+
+    return [
+        {
+            "id_acesso": r[0],
+            "representante": r[1],
+            "perfil": r[2],
+            "ativo": bool(r[3]),
+            "admin": bool(r[4]),
+            "cod_reps": [
+                int(x)
+                for x in (r[5] or [])
+            ],
+            "criado_em": r[6],
+            "atualizado_em": r[7]
+        }
+        for r in linhas
+    ]
+
+
+@app.post("/admin/acessos")
+def admin_criar_acesso(
+    dados: AdminAcessoCriar,
+    request: Request,
+    authorization: str | None = Header(default=None)
+):
+    usuario = exigir_admin(
+        authorization
+    )
+
+    try:
+        cpf = normalizar_cpf(
+            dados.cpf
+        )
+    except ValueError:
+        raise HTTPException(
+            status_code=400,
+            detail="CPF invalido."
+        )
+
+    perfil = str(
+        dados.perfil or "VENDEDOR"
+    ).strip().upper()
+
+    if perfil != "VENDEDOR":
+        raise HTTPException(
+            status_code=400,
+            detail="Nesta versao, o perfil permitido e VENDEDOR."
+        )
+
+    cpf_hash = hash_cpf(
+        cpf
+    )
+
+    con = conectar_banco()
+    cur = con.cursor()
+
+    try:
+        codigos, representante = validar_cod_reps(
+            cur,
+            dados.cod_reps
+        )
+
+        cur.execute("""
+            SELECT id_acesso
+            FROM portal.acessos
+            WHERE cpf_hash = %s
+            LIMIT 1
+        """, (cpf_hash,))
+
+        existente = cur.fetchone()
+
+        if existente:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "CPF ja cadastrado. "
+                    "Edite o acesso existente."
+                )
+            )
+
+        cur.execute("""
+            INSERT INTO portal.acessos (
+                cpf_hash,
+                representante,
+                perfil,
+                ativo,
+                admin
+            )
+            VALUES (
+                %s,
+                %s,
+                %s,
+                true,
+                %s
+            )
+            RETURNING id_acesso
+        """, (
+            cpf_hash,
+            representante,
+            perfil,
+            bool(dados.admin)
+        ))
+
+        id_acesso = cur.fetchone()[0]
+
+        for codigo in codigos:
+            cur.execute("""
+                INSERT INTO portal.acesso_representantes (
+                    id_acesso,
+                    cod_rep
+                )
+                VALUES (%s, %s)
+            """, (
+                id_acesso,
+                codigo
+            ))
+
+        registrar_log(
+            "ADMIN_CADASTRO",
+            request=request,
+            id_acesso=usuario["id_acesso"],
+            cpf_hash=usuario["cpf_hash"],
+            detalhe=(
+                f"alvo_id={id_acesso}; "
+                f"cod_reps={','.join(str(x) for x in codigos)}"
+            ),
+            cur=cur
+        )
+
+        con.commit()
+
+    except HTTPException:
+        con.rollback()
+        raise
+
+    except Exception:
+        con.rollback()
+        raise
+
+    finally:
+        con.close()
+
+    return {
+        "status": "ok",
+        "id_acesso": id_acesso,
+        "representante": representante,
+        "perfil": perfil,
+        "ativo": True,
+        "admin": bool(dados.admin),
+        "cod_reps": codigos
+    }
+
+
+@app.post("/admin/acessos/{id_acesso}/vinculos")
+def admin_alterar_vinculos(
+    id_acesso: int,
+    dados: AdminVinculosAlterar,
+    request: Request,
+    authorization: str | None = Header(default=None)
+):
+    usuario = exigir_admin(
+        authorization
+    )
+
+    con = conectar_banco()
+    cur = con.cursor()
+
+    try:
+        cur.execute("""
+            SELECT id_acesso
+            FROM portal.acessos
+            WHERE id_acesso = %s
+            LIMIT 1
+        """, (id_acesso,))
+
+        if not cur.fetchone():
+            raise HTTPException(
+                status_code=404,
+                detail="Acesso nao encontrado."
+            )
+
+        codigos, representante = validar_cod_reps(
+            cur,
+            dados.cod_reps
+        )
+
+        cur.execute("""
+            DELETE FROM portal.acesso_representantes
+            WHERE id_acesso = %s
+        """, (id_acesso,))
+
+        for codigo in codigos:
+            cur.execute("""
+                INSERT INTO portal.acesso_representantes (
+                    id_acesso,
+                    cod_rep
+                )
+                VALUES (%s, %s)
+            """, (
+                id_acesso,
+                codigo
+            ))
+
+        cur.execute("""
+            UPDATE portal.acessos
+               SET representante = %s,
+                   atualizado_em = NOW()
+             WHERE id_acesso = %s
+        """, (
+            representante,
+            id_acesso
+        ))
+
+        registrar_log(
+            "ADMIN_VINCULOS",
+            request=request,
+            id_acesso=usuario["id_acesso"],
+            cpf_hash=usuario["cpf_hash"],
+            detalhe=(
+                f"alvo_id={id_acesso}; "
+                f"cod_reps={','.join(str(x) for x in codigos)}"
+            ),
+            cur=cur
+        )
+
+        con.commit()
+
+    except HTTPException:
+        con.rollback()
+        raise
+
+    except Exception:
+        con.rollback()
+        raise
+
+    finally:
+        con.close()
+
+    return {
+        "status": "ok",
+        "id_acesso": id_acesso,
+        "representante": representante,
+        "cod_reps": codigos
+    }
+
+
+@app.post("/admin/acessos/{id_acesso}/status")
+def admin_alterar_status(
+    id_acesso: int,
+    dados: AdminStatusAlterar,
+    request: Request,
+    authorization: str | None = Header(default=None)
+):
+    usuario = exigir_admin(
+        authorization
+    )
+
+    if (
+        id_acesso == usuario["id_acesso"]
+        and not dados.ativo
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Voce nao pode bloquear o proprio acesso."
+        )
+
+    con = conectar_banco()
+    cur = con.cursor()
+
+    try:
+        cur.execute("""
+            UPDATE portal.acessos
+               SET ativo = %s,
+                   atualizado_em = NOW()
+             WHERE id_acesso = %s
+            RETURNING representante
+        """, (
+            bool(dados.ativo),
+            id_acesso
+        ))
+
+        r = cur.fetchone()
+
+        if not r:
+            raise HTTPException(
+                status_code=404,
+                detail="Acesso nao encontrado."
+            )
+
+        registrar_log(
+            "ADMIN_STATUS",
+            request=request,
+            id_acesso=usuario["id_acesso"],
+            cpf_hash=usuario["cpf_hash"],
+            detalhe=(
+                f"alvo_id={id_acesso}; "
+                f"ativo={str(bool(dados.ativo)).lower()}"
+            ),
+            cur=cur
+        )
+
+        con.commit()
+
+    except HTTPException:
+        con.rollback()
+        raise
+
+    except Exception:
+        con.rollback()
+        raise
+
+    finally:
+        con.close()
+
+    return {
+        "status": "ok",
+        "id_acesso": id_acesso,
+        "representante": r[0],
+        "ativo": bool(dados.ativo)
+    }
+
+
+@app.get("/admin/historico")
+def admin_historico(
+    id_acesso: int | None = None,
+    evento: str | None = None,
+    limite: int = 500,
+    authorization: str | None = Header(default=None)
+):
+    exigir_admin(
+        authorization
+    )
+
+    if limite < 1 or limite > 2000:
+        raise HTTPException(
+            status_code=400,
+            detail="Limite deve ficar entre 1 e 2000."
+        )
+
+    filtros = []
+    parametros = []
+
+    if id_acesso is not None:
+        filtros.append(
+            "l.id_acesso = %s"
+        )
+        parametros.append(
+            id_acesso
+        )
+
+    if evento:
+        evento = evento.strip().upper()
+
+        if len(evento) > 30:
+            raise HTTPException(
+                status_code=400,
+                detail="Evento invalido."
+            )
+
+        filtros.append(
+            "l.evento = %s"
+        )
+        parametros.append(
+            evento
+        )
+
+    where_sql = ""
+
+    if filtros:
+        where_sql = (
+            "WHERE "
+            + " AND ".join(filtros)
+        )
+
+    parametros.append(
+        limite
+    )
+
+    con = conectar_banco()
+    cur = con.cursor()
+
+    try:
+        cur.execute(
+            f"""
+                SELECT
+                    l.id_log,
+                    l.id_acesso,
+                    l.evento,
+                    a.representante,
+                    a.perfil,
+                    l.ip,
+                    l.user_agent,
+                    l.detalhe,
+                    l.criado_em AT TIME ZONE 'America/Sao_Paulo'
+                FROM portal.acessos_log l
+
+                LEFT JOIN portal.acessos a
+                    ON a.id_acesso = l.id_acesso
+
+                {where_sql}
+
+                ORDER BY
+                    l.criado_em DESC,
+                    l.id_log DESC
+
+                LIMIT %s
+            """,
+            parametros
+        )
+
+        linhas = cur.fetchall()
+
+    finally:
+        con.close()
+
+    return [
+        {
+            "id_log": r[0],
+            "id_acesso": r[1],
+            "evento": r[2],
+            "representante": r[3],
+            "perfil": r[4],
+            "ip": r[5],
+            "user_agent": r[6],
+            "detalhe": r[7],
+            "data_hora": r[8]
+        }
+        for r in linhas
+    ]
 
 
 # ============================================================
