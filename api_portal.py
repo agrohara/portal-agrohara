@@ -1,10 +1,13 @@
 import os
 import re
 import hmac
+import json
+import base64
 import secrets
 import hashlib
 import psycopg
 
+from pathlib import Path
 from datetime import date, timedelta
 
 from fastapi import FastAPI
@@ -16,7 +19,7 @@ from pydantic import BaseModel
 
 app = FastAPI(
     title="Portal AgroHara API",
-    version="1.0.0"
+    version="2.0.0"
 )
 
 app.add_middleware(
@@ -34,13 +37,8 @@ app.add_middleware(
 # MODELOS
 # ============================================================
 
-class SolicitarCodigo(BaseModel):
-    telefone: str
-
-
-class ValidarCodigo(BaseModel):
-    telefone: str
-    codigo: str
+class LoginCPF(BaseModel):
+    cpf: str
 
 
 # ============================================================
@@ -63,33 +61,39 @@ def conectar_banco():
 
 
 # ============================================================
-# TELEFONE
+# ACESSOS - ARQUIVO DO GITHUB
 # ============================================================
 
-def normalizar_telefone(valor):
-    digitos = re.sub(r"\D", "", valor)
+ACESSOS_PATH = Path(__file__).with_name("acessos.json")
 
-    if len(digitos) in (10, 11):
-        digitos = "55" + digitos
 
-    telefone = "+" + digitos
+def normalizar_cpf(valor):
+    digitos = re.sub(r"\D", "", str(valor or ""))
 
-    if not re.fullmatch(
-        r"\+[1-9][0-9]{7,14}",
-        telefone
-    ):
-        raise ValueError(
-            "Telefone invalido."
+    if len(digitos) != 11:
+        raise ValueError("CPF invalido.")
+
+    if digitos == digitos[0] * 11:
+        raise ValueError("CPF invalido.")
+
+    # Valida os dois digitos verificadores do CPF.
+    for tamanho in (9, 10):
+        soma = sum(
+            int(digitos[i]) * (tamanho + 1 - i)
+            for i in range(tamanho)
         )
+        digito = (soma * 10) % 11
 
-    return telefone
+        if digito == 10:
+            digito = 0
+
+        if digito != int(digitos[tamanho]):
+            raise ValueError("CPF invalido.")
+
+    return digitos
 
 
-# ============================================================
-# OTP
-# ============================================================
-
-def gerar_hash_otp(codigo):
+def hash_cpf(cpf):
     pepper = os.environ.get("OTP_PEPPER")
 
     if not pepper:
@@ -99,14 +103,266 @@ def gerar_hash_otp(codigo):
 
     return hmac.new(
         pepper.encode("utf-8"),
-        codigo.encode("utf-8"),
+        cpf.encode("utf-8"),
         hashlib.sha256
     ).hexdigest()
 
 
+def carregar_acessos():
+    # No Render, preferimos manter a lista de acessos fora do repositorio
+    # publico, na variavel PORTAL_ACESSOS_JSON. Na .60, o fallback continua
+    # sendo o arquivo local acessos.json ja homologado.
+    acessos_json = os.environ.get("PORTAL_ACESSOS_JSON")
+
+    try:
+        if acessos_json:
+            dados = json.loads(acessos_json)
+        else:
+            if not ACESSOS_PATH.exists():
+                raise RuntimeError(
+                    "PORTAL_ACESSOS_JSON/acessos.json nao configurado."
+                )
+
+            dados = json.loads(
+                ACESSOS_PATH.read_text(encoding="utf-8")
+            )
+    except RuntimeError:
+        raise
+    except Exception as exc:
+        raise RuntimeError(
+            "Configuracao de acessos invalida."
+        ) from exc
+
+    acessos = dados.get("acessos", [])
+
+    if not isinstance(acessos, list):
+        raise RuntimeError(
+            "Estrutura de acessos.json invalida."
+        )
+
+    resultado = []
+
+    for item in acessos:
+        if not isinstance(item, dict):
+            continue
+
+        if item.get("ativo", True) is False:
+            continue
+
+        cpf_hash = str(
+            item.get("cpf_hash", "")
+        ).strip().lower()
+
+        representante = str(
+            item.get("representante", "")
+        ).strip()
+
+        cod_reps_brutos = item.get(
+            "cod_reps",
+            []
+        )
+
+        if not re.fullmatch(r"[0-9a-f]{64}", cpf_hash):
+            continue
+
+        if not representante:
+            continue
+
+        if not isinstance(cod_reps_brutos, list):
+            continue
+
+        cod_reps = []
+
+        for valor in cod_reps_brutos:
+            try:
+                codigo = int(valor)
+            except (TypeError, ValueError):
+                continue
+
+            if codigo not in cod_reps:
+                cod_reps.append(codigo)
+
+        if not cod_reps:
+            continue
+
+        resultado.append({
+            "cpf_hash": cpf_hash,
+            "representante": representante,
+            "cod_reps": cod_reps,
+            "perfil": str(
+                item.get("perfil", "VENDEDOR")
+            ).strip().upper() or "VENDEDOR"
+        })
+
+    return resultado
+
+
+def buscar_acesso_por_hash(cpf_hash):
+    for acesso in carregar_acessos():
+        if hmac.compare_digest(
+            acesso["cpf_hash"],
+            cpf_hash
+        ):
+            return acesso
+
+    return None
+
+
 # ============================================================
-# SESSAO
+# TOKEN / SESSAO
 # ============================================================
+
+def segredo_sessao():
+    # Reaproveita o segredo ja configurado no Render.
+    # Se no futuro quiser separar, basta criar PORTAL_SESSION_SECRET.
+    segredo = (
+        os.environ.get("PORTAL_SESSION_SECRET")
+        or os.environ.get("OTP_PEPPER")
+    )
+
+    if not segredo:
+        raise RuntimeError(
+            "PORTAL_SESSION_SECRET/OTP_PEPPER nao configurado."
+        )
+
+    return segredo
+
+
+def b64url_encode(valor_bytes):
+    return base64.urlsafe_b64encode(
+        valor_bytes
+    ).decode("ascii").rstrip("=")
+
+
+def b64url_decode(valor):
+    padding = "=" * (
+        (4 - len(valor) % 4) % 4
+    )
+
+    return base64.urlsafe_b64decode(
+        valor + padding
+    )
+
+
+def criar_token_sessao(cpf_hash):
+    agora = int(
+        __import__("time").time()
+    )
+
+    payload = {
+        "sub": cpf_hash,
+        "iat": agora,
+        "exp": agora + (12 * 60 * 60),
+        "nonce": secrets.token_urlsafe(12)
+    }
+
+    payload_txt = json.dumps(
+        payload,
+        separators=(",", ":"),
+        sort_keys=True
+    )
+
+    payload_b64 = b64url_encode(
+        payload_txt.encode("utf-8")
+    )
+
+    assinatura = hmac.new(
+        segredo_sessao().encode("utf-8"),
+        payload_b64.encode("ascii"),
+        hashlib.sha256
+    ).digest()
+
+    return (
+        payload_b64
+        + "."
+        + b64url_encode(assinatura)
+    )
+
+
+def ler_token_sessao(token):
+    try:
+        payload_b64, assinatura_b64 = token.split(".", 1)
+
+        assinatura_recebida = b64url_decode(
+            assinatura_b64
+        )
+
+        assinatura_esperada = hmac.new(
+            segredo_sessao().encode("utf-8"),
+            payload_b64.encode("ascii"),
+            hashlib.sha256
+        ).digest()
+
+        if not hmac.compare_digest(
+            assinatura_recebida,
+            assinatura_esperada
+        ):
+            raise ValueError
+
+        payload = json.loads(
+            b64url_decode(
+                payload_b64
+            ).decode("utf-8")
+        )
+
+        agora = int(
+            __import__("time").time()
+        )
+
+        if int(payload.get("exp", 0)) <= agora:
+            raise ValueError
+
+        cpf_hash = str(
+            payload.get("sub", "")
+        ).strip().lower()
+
+        if not re.fullmatch(r"[0-9a-f]{64}", cpf_hash):
+            raise ValueError
+
+        return payload
+
+    except Exception:
+        raise HTTPException(
+            status_code=401,
+            detail="Sessao invalida ou expirada."
+        )
+
+
+def obter_id_usuario_tecnico(cur, cod_reps):
+    # Tenta reaproveitar um usuario existente ligado a um dos codigos.
+    cur.execute("""
+        SELECT id_usuario
+        FROM portal.usuarios
+        WHERE ativo = true
+          AND cod_rep = ANY(%s::integer[])
+        ORDER BY id_usuario
+        LIMIT 1
+    """, (cod_reps,))
+
+    r = cur.fetchone()
+
+    if r:
+        return r[0]
+
+    # Fallback tecnico para manter a FK da tabela portal.sessoes
+    # sem precisar criar nenhuma tabela nova.
+    cur.execute("""
+        SELECT id_usuario
+        FROM portal.usuarios
+        WHERE ativo = true
+        ORDER BY id_usuario
+        LIMIT 1
+    """)
+
+    r = cur.fetchone()
+
+    if not r:
+        raise RuntimeError(
+            "Nenhum usuario tecnico ativo em portal.usuarios."
+        )
+
+    return r[0]
+
 
 def validar_sessao(authorization):
     if not authorization:
@@ -129,6 +385,22 @@ def validar_sessao(authorization):
 
     token = partes[1].strip()
 
+    payload = ler_token_sessao(
+        token
+    )
+
+    cpf_hash = payload["sub"]
+
+    acesso = buscar_acesso_por_hash(
+        cpf_hash
+    )
+
+    if not acesso:
+        raise HTTPException(
+            status_code=401,
+            detail="Acesso nao autorizado."
+        )
+
     token_hash = hashlib.sha256(
         token.encode("utf-8")
     ).hexdigest()
@@ -136,55 +408,137 @@ def validar_sessao(authorization):
     con = conectar_banco()
     cur = con.cursor()
 
-    cur.execute("""
-        SELECT
-            s.id_sessao,
-            u.id_usuario,
-            u.representestab,
-            u.cod_rep,
-            u.representante,
-            u.perfil
-        FROM portal.sessoes s
+    try:
+        cur.execute("""
+            SELECT id_sessao
+            FROM portal.sessoes
+            WHERE token_hash = %s
+              AND ativo = true
+              AND revogado_em IS NULL
+              AND expira_em > now()
+            LIMIT 1
+        """, (token_hash,))
 
-        INNER JOIN portal.usuarios u
-            ON u.id_usuario = s.id_usuario
+        sessao = cur.fetchone()
 
-        WHERE s.token_hash = %s
-          AND s.ativo = true
-          AND s.revogado_em IS NULL
-          AND s.expira_em > now()
-          AND u.ativo = true
+        if not sessao:
+            raise HTTPException(
+                status_code=401,
+                detail="Sessao inexistente, expirada ou revogada."
+            )
 
-        LIMIT 1
-    """, (token_hash,))
+        cur.execute("""
+            UPDATE portal.sessoes
+               SET ultimo_acesso_em = now()
+             WHERE id_sessao = %s
+        """, (sessao[0],))
 
-    usuario = cur.fetchone()
+        con.commit()
 
-    if not usuario:
+    finally:
         con.close()
 
-        raise HTTPException(
-            status_code=401,
-            detail="Sessao inexistente, expirada ou revogada."
+    return {
+        "id_sessao": sessao[0],
+        "id_usuario": acesso["cod_reps"][0],
+        "representante": acesso["representante"],
+        "perfil": acesso["perfil"],
+        "cod_reps": acesso["cod_reps"],
+        "cpf_hash": cpf_hash
+    }
+
+
+# ============================================================
+# AUTH - LOGIN POR CPF
+# ============================================================
+
+@app.post("/auth/login")
+def login_cpf(dados: LoginCPF):
+    try:
+        cpf = normalizar_cpf(
+            dados.cpf
         )
 
-    cur.execute("""
-        UPDATE portal.sessoes
-           SET ultimo_acesso_em = now()
-         WHERE id_sessao = %s
-    """, (usuario[0],))
+    except ValueError:
+        raise HTTPException(
+            status_code=401,
+            detail="CPF nao autorizado."
+        )
 
-    con.commit()
-    con.close()
+    cpf_hash = hash_cpf(
+        cpf
+    )
+
+    acesso = buscar_acesso_por_hash(
+        cpf_hash
+    )
+
+    if not acesso:
+        raise HTTPException(
+            status_code=401,
+            detail="CPF nao autorizado."
+        )
+
+    token = criar_token_sessao(
+        cpf_hash
+    )
+
+    token_hash = hashlib.sha256(
+        token.encode("utf-8")
+    ).hexdigest()
+
+    con = conectar_banco()
+    cur = con.cursor()
+
+    try:
+        id_usuario_tecnico = obter_id_usuario_tecnico(
+            cur,
+            acesso["cod_reps"]
+        )
+
+        cur.execute("""
+            INSERT INTO portal.sessoes (
+                id_usuario,
+                token_hash,
+                expira_em,
+                ultimo_acesso_em,
+                ativo
+            )
+            VALUES (
+                %s,
+                %s,
+                now() + interval '12 hours',
+                now(),
+                true
+            )
+            RETURNING
+                id_sessao,
+                expira_em
+        """, (
+            id_usuario_tecnico,
+            token_hash
+        ))
+
+        sessao = cur.fetchone()
+
+        con.commit()
+
+    finally:
+        con.close()
 
     return {
-        "id_sessao": usuario[0],
-        "id_usuario": usuario[1],
-        "representestab": usuario[2],
-        "cod_rep": usuario[3],
-        "representante": usuario[4],
-        "perfil": usuario[5]
+        "status": "ok",
+        "access_token": token,
+        "token_type": "bearer",
+        "expires_at": sessao[1],
+        "usuario": {
+            "id_usuario": acesso["cod_reps"][0],
+            "representante": acesso["representante"],
+            "perfil": acesso["perfil"]
+        }
     }
+
+
 
 
 # ============================================================
@@ -231,373 +585,6 @@ def health_db():
         )
 
 
-# ============================================================
-# AUTH - SOLICITAR CODIGO
-# ============================================================
-
-@app.post("/auth/request-code")
-def solicitar_codigo(dados: SolicitarCodigo):
-
-    resposta = {
-        "status": "ok",
-        "mensagem": (
-            "Se o telefone estiver cadastrado, "
-            "um codigo sera enviado."
-        )
-    }
-
-    try:
-        telefone = normalizar_telefone(
-            dados.telefone
-        )
-
-    except ValueError:
-        return resposta
-
-    con = conectar_banco()
-    cur = con.cursor()
-
-    cur.execute("""
-        SELECT
-            id_usuario,
-            representante
-        FROM portal.usuarios
-        WHERE telefone_e164 = %s
-          AND ativo = true
-        LIMIT 1
-    """, (telefone,))
-
-    usuario = cur.fetchone()
-
-    if not usuario:
-        con.close()
-        return resposta
-
-    id_usuario = usuario[0]
-
-    cur.execute("""
-        SELECT criado_em
-        FROM portal.login_otp
-        WHERE id_usuario = %s
-        ORDER BY criado_em DESC
-        LIMIT 1
-    """, (id_usuario,))
-
-    ultimo = cur.fetchone()
-
-    if ultimo:
-        cur.execute("""
-            SELECT
-                now() - %s < interval '1 minute'
-        """, (ultimo[0],))
-
-        muito_recente = cur.fetchone()[0]
-
-        if muito_recente:
-            con.close()
-            return resposta
-
-    codigo = f"{secrets.randbelow(1000000):06d}"
-
-    codigo_hash = gerar_hash_otp(
-        codigo
-    )
-
-    cur.execute("""
-        UPDATE portal.login_otp
-           SET ativo = false
-         WHERE id_usuario = %s
-           AND ativo = true
-    """, (id_usuario,))
-
-    cur.execute("""
-        INSERT INTO portal.login_otp (
-            id_usuario,
-            codigo_hash,
-            expira_em,
-            tentativas,
-            ativo
-        )
-        VALUES (
-            %s,
-            %s,
-            now() + interval '5 minutes',
-            0,
-            true
-        )
-    """, (
-        id_usuario,
-        codigo_hash
-    ))
-
-    con.commit()
-    con.close()
-
-    # SOMENTE NA HOMOLOGACAO LOCAL.
-    # Remover quando entrar o WhatsApp.
-    print("")
-    print("======================================")
-    print(" OTP GERADO - TESTE LOCAL")
-    print("======================================")
-    print("USUARIO:", id_usuario)
-    print("CODIGO:", codigo)
-    print("VALIDADE: 5 minutos")
-    print("======================================")
-    print("")
-
-    return resposta
-
-
-# ============================================================
-# AUTH - VALIDAR CODIGO
-# ============================================================
-
-@app.post("/auth/verify-code")
-def validar_codigo(dados: ValidarCodigo):
-
-    try:
-        telefone = normalizar_telefone(
-            dados.telefone
-        )
-
-    except ValueError:
-        raise HTTPException(
-            status_code=401,
-            detail="Codigo ou usuario invalido."
-        )
-
-    codigo = dados.codigo.strip()
-
-    if not re.fullmatch(r"[0-9]{6}", codigo):
-        raise HTTPException(
-            status_code=401,
-            detail="Codigo ou usuario invalido."
-        )
-
-    con = conectar_banco()
-    cur = con.cursor()
-
-    # --------------------------------------------------------
-    # USUARIO
-    # --------------------------------------------------------
-
-    cur.execute("""
-        SELECT
-            id_usuario,
-            representestab,
-            cod_rep,
-            representante,
-            perfil
-        FROM portal.usuarios
-        WHERE telefone_e164 = %s
-          AND ativo = true
-        LIMIT 1
-    """, (telefone,))
-
-    usuario = cur.fetchone()
-
-    if not usuario:
-        con.close()
-
-        raise HTTPException(
-            status_code=401,
-            detail="Codigo ou usuario invalido."
-        )
-
-    id_usuario = usuario[0]
-
-    # --------------------------------------------------------
-    # OTP ATIVO
-    # --------------------------------------------------------
-
-    cur.execute("""
-        SELECT
-            id_otp,
-            codigo_hash,
-            expira_em,
-            tentativas,
-            utilizado_em,
-            ativo,
-            now()
-        FROM portal.login_otp
-        WHERE id_usuario = %s
-          AND ativo = true
-        ORDER BY criado_em DESC
-        LIMIT 1
-        FOR UPDATE
-    """, (id_usuario,))
-
-    otp = cur.fetchone()
-
-    if not otp:
-        con.rollback()
-        con.close()
-
-        raise HTTPException(
-            status_code=401,
-            detail="Codigo ou usuario invalido."
-        )
-
-    (
-        id_otp,
-        codigo_hash_banco,
-        expira_em,
-        tentativas,
-        utilizado_em,
-        ativo,
-        agora
-    ) = otp
-
-    # --------------------------------------------------------
-    # EXPIRACAO / USO / TENTATIVAS
-    # --------------------------------------------------------
-
-    if utilizado_em is not None or agora > expira_em:
-
-        cur.execute("""
-            UPDATE portal.login_otp
-               SET ativo = false
-             WHERE id_otp = %s
-        """, (id_otp,))
-
-        con.commit()
-        con.close()
-
-        raise HTTPException(
-            status_code=401,
-            detail="Codigo ou usuario invalido."
-        )
-
-    if tentativas >= 5:
-
-        cur.execute("""
-            UPDATE portal.login_otp
-               SET ativo = false
-             WHERE id_otp = %s
-        """, (id_otp,))
-
-        con.commit()
-        con.close()
-
-        raise HTTPException(
-            status_code=401,
-            detail="Codigo ou usuario invalido."
-        )
-
-    # --------------------------------------------------------
-    # COMPARACAO HMAC
-    # --------------------------------------------------------
-
-    codigo_hash_digitado = gerar_hash_otp(
-        codigo
-    )
-
-    codigo_correto = hmac.compare_digest(
-        codigo_hash_digitado,
-        codigo_hash_banco
-    )
-
-    if not codigo_correto:
-
-        nova_tentativa = tentativas + 1
-
-        cur.execute("""
-            UPDATE portal.login_otp
-               SET tentativas = %s,
-                   ativo = CASE
-                       WHEN %s >= 5 THEN false
-                       ELSE true
-                   END
-             WHERE id_otp = %s
-        """, (
-            nova_tentativa,
-            nova_tentativa,
-            id_otp
-        ))
-
-        con.commit()
-        con.close()
-
-        raise HTTPException(
-            status_code=401,
-            detail="Codigo ou usuario invalido."
-        )
-
-    # --------------------------------------------------------
-    # OTP UTILIZADO
-    # --------------------------------------------------------
-
-    cur.execute("""
-        UPDATE portal.login_otp
-           SET utilizado_em = now(),
-               ativo = false
-         WHERE id_otp = %s
-    """, (id_otp,))
-
-    # --------------------------------------------------------
-    # REVOGA SESSOES ANTIGAS
-    # --------------------------------------------------------
-
-    cur.execute("""
-        UPDATE portal.sessoes
-           SET ativo = false,
-               revogado_em = COALESCE(
-                   revogado_em,
-                   now()
-               )
-         WHERE id_usuario = %s
-           AND ativo = true
-    """, (id_usuario,))
-
-    # --------------------------------------------------------
-    # NOVA SESSAO
-    # --------------------------------------------------------
-
-    token = secrets.token_urlsafe(32)
-
-    token_hash = hashlib.sha256(
-        token.encode("utf-8")
-    ).hexdigest()
-
-    cur.execute("""
-        INSERT INTO portal.sessoes (
-            id_usuario,
-            token_hash,
-            expira_em,
-            ultimo_acesso_em,
-            ativo
-        )
-        VALUES (
-            %s,
-            %s,
-            now() + interval '12 hours',
-            now(),
-            true
-        )
-        RETURNING
-            id_sessao,
-            expira_em
-    """, (
-        id_usuario,
-        token_hash
-    ))
-
-    sessao = cur.fetchone()
-
-    con.commit()
-    con.close()
-
-    return {
-        "status": "ok",
-        "access_token": token,
-        "token_type": "bearer",
-        "expires_at": sessao[1],
-        "usuario": {
-            "id_usuario": usuario[0],
-            "representante": usuario[3],
-            "perfil": usuario[4]
-        }
-    }
 
 
 # ============================================================
@@ -633,6 +620,8 @@ def me(
         "perfil": usuario["perfil"],
         "data_referencia": data_referencia
     }
+
+
 
 
 # ============================================================
@@ -933,13 +922,11 @@ def vendas_resumo(
 
                 FROM portal.vendas
 
-                WHERE representestab = %s
-                  AND cod_rep = %s
+                WHERE cod_rep = ANY(%s::integer[])
                   {filtro_sql}
             """,
             [
-                usuario["representestab"],
-                usuario["cod_rep"],
+                usuario["cod_reps"],
                 *parametros_periodo
             ]
         )
@@ -1027,8 +1014,7 @@ def vendas_itens(
 
             FROM portal.vendas
 
-            WHERE representestab = %s
-              AND cod_rep = %s
+            WHERE cod_rep = ANY(%s::integer[])
               AND dtemissao >= %s
               AND dtemissao <= %s
 
@@ -1038,8 +1024,7 @@ def vendas_itens(
                 seqnota,
                 seqnotaitem
         """, (
-            usuario["representestab"],
-            usuario["cod_rep"],
+            usuario["cod_reps"],
             de,
             ate
         ))
@@ -1075,6 +1060,8 @@ def vendas_itens(
         dict(zip(colunas, linha))
         for linha in linhas
     ]
+
+
 
 
 # ============================================================
