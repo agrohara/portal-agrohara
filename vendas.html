@@ -784,7 +784,7 @@ async function carregar() {
   if (CONFIG.MODO_DEMO) { const d = gerarDemo(); ME = d.me; TODOS = d.itens; METAS = d.metas; return; }
   if (!token()) { sairParaLogin(); return; }
   ME = await api("/me");
-  const ate = iso(new Date(ME.data_referencia));
+  const ate = String(ME.data_referencia).slice(0, 10);
   const q = `?de=${CONFIG.INICIO_DADOS}&ate=${ate.slice(0, 4)}-12-31`;
   TODOS = await api(`/vendas/itens?de=${CONFIG.INICIO_DADOS}&ate=${ate}`);
   try { METAS = await api(`/vendas/metas${q}`); } catch (_) { METAS = []; }   // metas são opcionais
@@ -1698,11 +1698,12 @@ window.addEventListener("resize", () => { clearTimeout(tResize); tResize = setTi
 (async () => {
   await carregar();
   if (!ME) return;
-  const ref = new Date(ME.data_referencia);
-  REF = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate());
+  const dataRef = String(ME.data_referencia).slice(0, 10);
+  const ref = pDate(dataRef);
+  REF = ref;
   document.getElementById("nome-rep").textContent = ME.nome;
   document.getElementById("data-ref").textContent =
-    `Dados atualizados até ${ref.toLocaleDateString("pt-BR")} às ${ref.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+    `Dados atualizados até ${ref.toLocaleDateString("pt-BR")}`;
   estado.periodo = periodoAtual(estado.modo);
   if (CONFIG.MODO_DEMO) document.getElementById("demo-aviso").hidden = false;
   lerRota();
