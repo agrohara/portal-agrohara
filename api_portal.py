@@ -1,4 +1,4 @@
-import os
+﻿import os
 import re
 import hmac
 import json
@@ -1379,6 +1379,64 @@ def admin_historico(
 # VENDAS
 # ============================================================
 
+
+@app.get("/vendas/metas")
+def vendas_metas(
+    de: date,
+    ate: date,
+    authorization: str | None = Header(default=None)
+):
+    usuario = validar_sessao(
+        authorization
+    )
+
+    if usuario["perfil"] != "VENDEDOR":
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "Perfil ainda nao autorizado "
+                "para este endpoint."
+            )
+        )
+
+    if ate < de:
+        raise HTTPException(
+            status_code=400,
+            detail="Periodo invalido."
+        )
+
+    con = conectar_banco()
+    cur = con.cursor()
+
+    try:
+        cur.execute("""
+            SELECT
+                ano,
+                SUM(valor) AS valor
+            FROM portal.metas
+            WHERE cod_rep = ANY(%s::integer[])
+              AND ano BETWEEN %s AND %s
+            GROUP BY ano
+            ORDER BY ano
+        """, (
+            usuario["cod_reps"],
+            de.year,
+            ate.year
+        ))
+
+        linhas = cur.fetchall()
+
+    finally:
+        con.close()
+
+    return [
+        {
+            "ano": int(r[0]),
+            "valor": float(r[1])
+        }
+        for r in linhas
+    ]
+
 def adicionar_meses(data_base: date, meses: int) -> date:
     total = data_base.year * 12 + (data_base.month - 1) + meses
     ano = total // 12
@@ -1866,4 +1924,5 @@ def logout(
         "status": "ok",
         "mensagem": "Sessao encerrada."
     }
+
 
