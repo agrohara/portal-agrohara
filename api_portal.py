@@ -1,4 +1,4 @@
-import os
+﻿import os
 import re
 import hmac
 import json
@@ -1926,6 +1926,8 @@ def logout(
     }
 
 
+
+
 # ============================================================
 # VETERINARIA - LAMINAS ELANCO / MSD  (bloco vet v1 - 03/11/2026)
 #
@@ -2121,7 +2123,8 @@ def vet_montar_lamina(cur, cod_reps, de, ate):
             m.data_fim,
             m.valor_meta,
             COALESCE(rz.realizado, 0),
-            rz.unidades
+            rz.unidades,
+            c.descricao
         FROM portal.vet_metas m
         JOIN portal.vet_cestas c
           ON c.id_cesta = m.id_cesta
@@ -2162,6 +2165,7 @@ def vet_montar_lamina(cur, cod_reps, de, ate):
             "id_meta": r[0],
             "id_cesta": r[2],
             "cesta": r[3],
+            "descricao": r[11],
             "fabricante": r[4],
             "tipo": r[5],
             "data_inicio": r[6],
