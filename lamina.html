@@ -1,0 +1,749 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1A6436">
+<meta name="robots" content="noindex, nofollow">
+<title>Lâmina de avaliação · Portal do Representante · Agro Hara</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Oswald:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --verde-escuro: #1A6436;
+  --verde-escuro-2: #14512B;
+  --verde-marca: #0E9952;
+  --verde-medio: #6FA83C;
+  --verde-vivo: #7ECD26;
+  --claro-1: #EAF3EC;
+  --claro-2: #F2F8EC;
+  --claro-3: #C8DFC0;
+  --cinza: #5C6B60;
+  --cinza-2: #6B7A70;
+  --terracota: #C1502E;
+  --ambar: #8A6A00;
+  --texto: #1C2A21;
+  --superficie: #FFFFFF;
+  --fundo: #F4F7F2;
+  --linha: #E3EBE2;
+  --raio: 16px;
+  --sombra: 0 1px 2px rgba(20,60,35,.06), 0 6px 20px rgba(20,60,35,.06);
+  /* status das metas */
+  --ok-bg: #DDF1E4;   --ok-tx: #14512B;
+  --rit-bg: #EEF6E8;  --rit-tx: #2E6B1F;
+  --aten-bg: #FFF2CC; --aten-tx: #6B5300;
+  --crit-bg: #FBEDE8; --crit-tx: #8E3218;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  font-family: "Montserrat", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--fundo); color: var(--texto);
+  -webkit-font-smoothing: antialiased; font-variant-numeric: tabular-nums;
+}
+button, input, select { font: inherit; color: inherit; }
+[hidden] { display: none !important; }
+
+/* ================= Cabeçalho ================= */
+.topo {
+  background: var(--verde-escuro); color: #fff;
+  padding: calc(14px + env(safe-area-inset-top)) 20px 64px;
+  position: relative; overflow: hidden;
+}
+.topo::before {
+  content: ""; position: absolute; inset: 0;
+  background-image: radial-gradient(rgba(255,255,255,.09) 1.2px, transparent 1.3px);
+  background-size: 18px 18px;
+  mask-image: linear-gradient(200deg, #000, transparent 60%);
+  -webkit-mask-image: linear-gradient(200deg, #000, transparent 60%);
+}
+.topo-inner { max-width: 1180px; margin: 0 auto; position: relative; }
+.barra { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.barra img { height: 34px; width: auto; display: block; }
+.barra .acoes { display: flex; gap: 8px; }
+.btn-topo {
+  display: inline-flex; align-items: center; gap: 8px; text-decoration: none;
+  background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.22);
+  color: #fff; border-radius: 999px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.btn-topo:hover { background: rgba(255,255,255,.2); }
+.btn-topo svg { width: 16px; height: 16px; }
+.saudacao { margin-top: 26px; }
+.sobre-titulo { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,.78); }
+.selo-seg { background: var(--verde-vivo); color: var(--verde-escuro-2); border-radius: 6px; padding: 3px 8px; letter-spacing: .08em; }
+.saudacao h1 {
+  font-family: "Oswald", "Montserrat", sans-serif; font-weight: 500;
+  font-size: 30px; line-height: 1.1; margin: 8px 0 6px;
+}
+.saudacao p { margin: 0; font-size: 13.5px; color: rgba(255,255,255,.82); display: flex; align-items: center; gap: 6px; }
+.saudacao p svg { width: 15px; height: 15px; color: var(--verde-vivo); }
+
+/* ================= Conteúdo ================= */
+main { max-width: 1180px; margin: -44px auto 0; padding: 0 16px calc(40px + env(safe-area-inset-bottom)); position: relative; }
+
+.filtros {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  background: var(--superficie); border-radius: var(--raio); box-shadow: var(--sombra); padding: 10px;
+}
+.seg { display: flex; gap: 4px; background: var(--claro-1); padding: 4px; border-radius: 12px; overflow-x: auto; }
+.seg button {
+  border: 0; background: transparent; padding: 9px 16px; border-radius: 9px;
+  font-weight: 600; font-size: 14px; color: var(--verde-escuro); cursor: pointer; white-space: nowrap; min-height: 40px;
+}
+.seg button[aria-pressed="true"] { background: var(--verde-escuro); color: #fff; box-shadow: 0 2px 6px rgba(26,100,54,.25); }
+.seg button:focus-visible, .chip:focus-visible, .sel select:focus-visible { outline: 2px solid var(--verde-marca); outline-offset: 2px; }
+.seg.contorno { background: #fff; border: 1.5px solid var(--claro-3); }
+.seg.contorno button[aria-pressed="true"] { background: var(--verde-marca); box-shadow: none; }
+.sel {
+  display: flex; align-items: center; gap: 8px;
+  border: 1.5px solid var(--verde-escuro); background: var(--claro-1); border-radius: 12px; padding: 0 6px 0 12px; min-height: 48px;
+}
+.sel span { font-size: 12px; font-weight: 700; color: var(--cinza); text-transform: uppercase; letter-spacing: .06em; }
+.sel select { border: 0; background: transparent; font-weight: 600; font-size: 14px; color: var(--verde-escuro); padding: 10px 4px; min-width: 190px; cursor: pointer; outline: 0; }
+.filtros .periodo { flex-basis: 100%; text-align: right; font-size: 13px; color: var(--cinza); padding: 0 8px; }
+
+.reps { display: flex; gap: 6px; overflow-x: auto; padding: 2px 2px 4px; margin-top: 12px; scrollbar-width: thin; }
+.chip {
+  border: 1.5px solid var(--claro-3); background: #fff; border-radius: 999px;
+  padding: 8px 14px; font-size: 13px; font-weight: 600; color: var(--cinza); cursor: pointer; min-height: 40px; white-space: nowrap;
+}
+.chip[aria-pressed="true"] { border-color: var(--verde-escuro); background: var(--verde-escuro); color: #fff; }
+.chip.time { border-style: dashed; }
+.chip.time[aria-pressed="true"] { border-style: solid; }
+
+.kpis { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.6fr) minmax(0, 1fr); gap: 12px; margin-top: 14px; }
+.kpi { background: var(--superficie); border-radius: var(--raio); box-shadow: var(--sombra); padding: 16px 18px; min-width: 0; }
+.kpi .nome { font-size: 12px; font-weight: 700; color: var(--cinza); text-transform: uppercase; letter-spacing: .06em; display: flex; align-items: center; gap: 8px; }
+.kpi .nome svg { width: 16px; height: 16px; color: var(--verde-marca); flex: none; }
+.kpi .valor { font-family: "Oswald", "Montserrat", sans-serif; font-weight: 500; font-size: 28px; line-height: 1.15; margin-top: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kpi .det { font-size: 12.5px; color: var(--cinza-2); margin-top: 4px; }
+.kpi.destaque { background: var(--verde-escuro); color: #fff; }
+.kpi.destaque .nome, .kpi.destaque .det { color: rgba(255,255,255,.8); }
+.kpi.destaque .nome svg { color: var(--verde-vivo); }
+.topo-meta { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-top: 8px; }
+.topo-meta .valor { margin-top: 0; }
+.topo-meta .de { font-size: 12.5px; color: var(--cinza-2); text-align: right; white-space: nowrap; }
+.topo-meta .de b { color: var(--texto); }
+
+.barra-meta { position: relative; height: 10px; background: var(--claro-1); border-radius: 99px; margin: 10px 0 6px; }
+.barra-meta i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--verde-escuro); border-radius: 99px; max-width: 100%; }
+.barra-meta i.batida { background: var(--verde-marca); }
+.barra-meta i.atras { background: var(--terracota); }
+.barra-meta .esperado { position: absolute; top: -4px; bottom: -4px; width: 3px; margin-left: -1.5px; background: var(--texto); border-radius: 2px; }
+
+/* ---------- seções e cestas ---------- */
+.secao { margin-top: 22px; }
+.secao-topo { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 0 2px; }
+.secao h2 { font-size: 16px; font-weight: 700; margin: 0; }
+.secao .sub { font-size: 12.5px; color: var(--cinza-2); margin: 4px 0 0; }
+.legenda { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--cinza-2); }
+.legenda span { display: inline-flex; align-items: center; gap: 6px; }
+.legenda i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.legenda .marca { width: 3px; height: 12px; background: var(--texto); border-radius: 2px; }
+
+.cestas { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin-top: 12px; }
+.cesta { background: var(--superficie); border-radius: var(--raio); box-shadow: var(--sombra); padding: 16px 16px 14px; min-width: 0; border-top: 4px solid var(--claro-3); }
+.cesta.s-ok { border-top-color: var(--verde-marca); }
+.cesta.s-rit { border-top-color: var(--verde-medio); }
+.cesta.s-aten { border-top-color: #E0B23A; }
+.cesta.s-crit { border-top-color: var(--terracota); }
+.cesta .cab { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.cesta .titulo { font-weight: 700; font-size: 14.5px; line-height: 1.3; min-width: 0; }
+.cesta .titulo small { display: block; font-weight: 500; font-size: 12px; color: var(--cinza-2); margin-top: 2px; }
+.tag { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 3px 7px; border-radius: 6px; white-space: nowrap; background: var(--claro-1); color: var(--verde-escuro); }
+.cesta .pct { font-family: "Oswald", "Montserrat", sans-serif; font-weight: 500; font-size: 30px; line-height: 1.1; margin-top: 10px; }
+.cesta .linha2 { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 10px; font-size: 12.5px; color: var(--cinza-2); }
+.cesta .linha2 span { white-space: nowrap; }
+.cesta .linha2 b { color: var(--texto); }
+.status { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; margin-top: 8px; padding: 3px 8px; border-radius: 999px; }
+.status.s-ok { background: var(--ok-bg); color: var(--ok-tx); }
+.status.s-rit { background: var(--rit-bg); color: var(--rit-tx); }
+.status.s-aten { background: var(--aten-bg); color: var(--aten-tx); }
+.status.s-crit { background: var(--crit-bg); color: var(--crit-tx); }
+.status.s-fut { background: var(--claro-1); color: var(--cinza); }
+
+/* ---------- itens do trimestre (tabela) ---------- */
+.cartao { background: var(--superficie); border-radius: var(--raio); box-shadow: var(--sombra); padding: 16px 18px; min-width: 0; margin-top: 12px; }
+.tabela { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.tabela th { text-align: left; font-size: 11px; font-weight: 700; color: var(--cinza-2); text-transform: uppercase; letter-spacing: .05em; padding: 8px 6px; border-bottom: 1px solid var(--linha); white-space: nowrap; }
+.tabela td { padding: 10px 6px; border-bottom: 1px solid var(--linha); vertical-align: middle; }
+.tabela tr:last-child td { border-bottom: 0; }
+.tabela .num { text-align: right; white-space: nowrap; }
+.tabela .s2 { display: block; font-size: 11.5px; color: var(--cinza-2); margin-top: 2px; }
+.mini-barra { position: relative; height: 6px; background: var(--claro-1); border-radius: 99px; margin-top: 6px; min-width: 80px; }
+.mini-barra i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 99px; background: var(--verde-escuro); max-width: 100%; }
+.mini-barra i.batida { background: var(--verde-marca); }
+.mini-barra i.atras { background: var(--terracota); }
+.mini-barra .esperado { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: var(--texto); }
+
+/* ---------- grupos ---------- */
+.grupos { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 10px; }
+.grupos li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 4px 10px; align-items: center; }
+.grupos .g-nome { font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.grupos .g-val { font-size: 13.5px; font-weight: 700; text-align: right; white-space: nowrap; }
+.grupos .g-pct { font-size: 12px; font-weight: 600; color: var(--cinza-2); text-align: right; min-width: 44px; }
+.grupos .trilha { grid-column: 1 / 4; height: 6px; background: var(--claro-1); border-radius: 99px; overflow: hidden; }
+.grupos .trilha i { display: block; height: 100%; background: var(--verde-escuro); border-radius: 99px; }
+.grupos .neg { color: var(--terracota); }
+
+/* ---------- visão do time (matriz) ---------- */
+.matriz-box { overflow-x: auto; margin-top: 12px; background: var(--superficie); border-radius: var(--raio); box-shadow: var(--sombra); }
+.matriz { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 13px; }
+.matriz th, .matriz td { padding: 10px 10px; border-bottom: 1px solid var(--linha); white-space: nowrap; }
+.matriz thead th { font-size: 11px; font-weight: 700; color: var(--cinza-2); text-transform: uppercase; letter-spacing: .05em; text-align: center; background: #FBFDFA; position: sticky; top: 0; }
+.matriz thead th:first-child { text-align: left; }
+.matriz tbody tr:last-child td, .matriz tbody tr:last-child th { border-bottom: 0; }
+.matriz tbody th { text-align: left; font-weight: 600; position: sticky; left: 0; background: #fff; z-index: 1; min-width: 170px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+.matriz tbody th button { border: 0; background: none; padding: 0; font-weight: 700; color: var(--verde-escuro); cursor: pointer; text-align: left; max-width: 100%; overflow: hidden; text-overflow: ellipsis; display: block; }
+.matriz tbody th button:hover { text-decoration: underline; }
+.matriz tbody th small { display: block; font-weight: 500; font-size: 11.5px; color: var(--cinza-2); }
+.matriz td { text-align: center; }
+.matriz td.fat { text-align: right; font-weight: 600; }
+.cel { display: inline-block; min-width: 58px; padding: 5px 8px; border-radius: 8px; font-weight: 700; font-size: 12.5px; }
+.cel.s-ok { background: var(--ok-bg); color: var(--ok-tx); }
+.cel.s-rit { background: var(--rit-bg); color: var(--rit-tx); }
+.cel.s-aten { background: var(--aten-bg); color: var(--aten-tx); }
+.cel.s-crit { background: var(--crit-bg); color: var(--crit-tx); }
+.cel.s-fut { background: var(--claro-1); color: var(--cinza); }
+.cel.vazio { color: #B5C2B9; font-weight: 500; }
+.matriz tfoot td, .matriz tfoot th { background: var(--claro-2); font-weight: 700; border-bottom: 0; }
+.matriz tfoot th { position: sticky; left: 0; text-align: left; }
+
+.nota-rodape { font-size: 12px; color: var(--cinza-2); margin: 18px 4px 0; line-height: 1.55; }
+.vazio { background: var(--superficie); border-radius: var(--raio); box-shadow: var(--sombra); text-align: center; color: var(--cinza-2); padding: 36px 18px; font-size: 14px; margin-top: 14px; line-height: 1.6; }
+.vazio b { color: var(--texto); display: block; font-size: 15px; margin-bottom: 4px; }
+.vazio a { color: var(--verde-marca); font-weight: 700; }
+.carregando { opacity: .55; transition: opacity .15s; pointer-events: none; }
+.erro-carga { margin-top: 14px; background: #FBEDE8; color: #8E3218; border: 1px solid #F1C9BB; border-radius: var(--raio); padding: 14px 16px; font-size: 14px; line-height: 1.5; }
+.erro-carga b { display: block; margin-bottom: 2px; }
+.erro-carga button { margin-top: 8px; border: 0; background: var(--verde-escuro); color: #fff; font-weight: 700; border-radius: 10px; padding: 9px 14px; cursor: pointer; }
+.demo-aviso { display: inline-block; margin-top: 10px; background: #FFF6D6; color: #6B5300; border: 1px solid #F0DC8C; font-size: 11.5px; font-weight: 600; padding: 4px 9px; border-radius: 8px; }
+
+/* ================= Responsivo ================= */
+@media (max-width: 980px) {
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kpis .kpi.meta { grid-column: 1 / -1; order: -1; }
+}
+@media (max-width: 560px) {
+  .topo { padding-left: 16px; padding-right: 16px; }
+  .saudacao h1 { font-size: 25px; }
+  .barra img { height: 28px; }
+  .btn-topo { padding: 8px 11px; }
+  .btn-topo .txt-longo { display: none; }
+  .filtros { gap: 8px; }
+  .seg { width: 100%; }
+  .seg button { flex: 1; padding: 9px 8px; }
+  .sel { flex: 1 1 100%; }
+  .sel span { display: none; }
+  .sel select { flex: 1; min-width: 0; width: 100%; }
+  .filtros .periodo { text-align: left; }
+  .kpi { padding: 14px; }
+  .kpi .valor { font-size: 23px; }
+  .cestas { grid-template-columns: minmax(0, 1fr); }
+  .tabela .col-opc { display: none; }
+  .matriz tbody th { min-width: 130px; max-width: 150px; }
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-sair" viewBox="0 0 24 24"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 16l-4-4 4-4M6 12h10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-voltar" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-relogio" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-dinheiro" viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="2.6" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+    <symbol id="i-alvo" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/></symbol>
+    <symbol id="i-cesta" viewBox="0 0 24 24"><path d="M3 9h18l-2 11H5zM8 9l4-6 4 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+    <symbol id="i-pessoas" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.5a6.5 6.5 0 0 1 3.5 5.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  </defs>
+</svg>
+
+<header class="topo">
+  <div class="topo-inner">
+    <div class="barra">
+      <img src="assets/logo-agrohara-branco.png" alt="Agro Hara">
+      <div class="acoes">
+        <a class="btn-topo" href="vendas.html"><svg aria-hidden="true"><use href="#i-voltar"/></svg><span>Vendas</span></a>
+        <button class="btn-topo" id="btn-sair" type="button"><svg aria-hidden="true"><use href="#i-sair"/></svg><span class="txt-longo">Sair</span></button>
+      </div>
+    </div>
+    <div class="saudacao">
+      <div class="sobre-titulo">Lâmina de avaliação <span class="selo-seg" id="selo-seg">—</span></div>
+      <h1 id="titulo">—</h1>
+      <p><svg aria-hidden="true"><use href="#i-relogio"/></svg><span id="data-ref">—</span></p>
+      <span class="demo-aviso" id="demo-aviso" hidden>MODO DEMONSTRAÇÃO · dados fictícios</span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="erro-carga" id="erro-carga" role="alert" hidden></div>
+
+  <section class="filtros" aria-label="Filtros">
+    <div class="seg contorno" id="seg-segmento" role="group" aria-label="Segmento" hidden>
+      <button type="button" data-s="ELANCO" aria-pressed="true">Elanco</button>
+      <button type="button" data-s="MSD" aria-pressed="false">MSD</button>
+    </div>
+    <div class="seg" id="seg-tipo" role="group" aria-label="Tipo de período">
+      <button type="button" data-t="mes" aria-pressed="true">Mês</button>
+      <button type="button" data-t="tri" aria-pressed="false">Trimestre</button>
+      <button type="button" data-t="ano" aria-pressed="false">Ano</button>
+    </div>
+    <label class="sel">
+      <span id="rot-sel">Mês</span>
+      <select id="sel-periodo" aria-label="Escolher período"></select>
+    </label>
+    <span class="periodo" id="periodo">—</span>
+  </section>
+
+  <div class="reps" id="reps" role="group" aria-label="Representante" hidden></div>
+
+  <div id="conteudo"></div>
+
+  <p class="nota-rodape">
+    Realizado = vendas menos devoluções do representante nos produtos de cada cesta, dentro do período de cada meta.
+    Um mesmo produto pode contar em mais de uma cesta. O faturamento total considera todos os produtos.
+    A marca <b>|</b> na barra mostra onde a meta deveria estar hoje, pelos dias corridos do período.
+  </p>
+</main>
+
+<script>
+/* =====================================================================
+   LÂMINA DE AVALIAÇÃO — VETERINÁRIA (ELANCO / MSD)
+   ---------------------------------------------------------------------
+   Login: o index.html grava o token em sessionStorage[TOKEN_KEY].
+   O frontend NUNCA envia cod_rep: a API usa os códigos da sessão.
+     GET /me                                   -> { nome, admin, data_referencia }
+     GET /vet/lamina?de&ate                    -> lâmina dos códigos da sessão
+     GET /admin/vet/lamina?segmento&de&ate     -> (admin) todos do segmento
+   ===================================================================== */
+const CONFIG = {
+  API_BASE: "https://portal-agrohara.onrender.com",
+  URL_LOGIN: "index.html",
+  TOKEN_KEY: "portal_agrohara_access_token",
+  MODO_DEMO: false,              // DESLIGAR em produção
+};
+
+/* ---------- formatação ---------- */
+const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+const num = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 });
+const int = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 });
+const pctTxt = (v) => (v === null || !isFinite(v) ? "—" : `${num.format(Math.round(v * 10) / 10)}%`);
+function compacto(v) {
+  const a = Math.abs(v), s = v < 0 ? "-" : "";
+  if (a >= 1e6) return `${s}R$ ${num.format(+(a / 1e6).toFixed(a >= 1e7 ? 1 : 2))} mi`;
+  if (a >= 1e4) return `${s}R$ ${int.format(Math.round(a / 1e3))} mil`;
+  return brl.format(v);
+}
+const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+const MESES_LONGOS = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+const pDate = (s) => { const [y, m, d] = String(s).slice(0, 10).split("-").map(Number); return new Date(y, m - 1, d); };
+const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const dm = (d) => `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
+const esc = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const DIA = 86400000;
+const dias = (a, b) => Math.round((b - a) / DIA) + 1;
+function nomeCurto(nome) {
+  const p = String(nome || "").trim().split(/\s+/).filter(Boolean);
+  if (!p.length) return "";
+  const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+  if (/(LTDA|S\/A|S\.A\.|ME|EIRELI|REPRESENTA)/i.test(nome)) return p.slice(0, 2).map(cap).join(" ");
+  return p.length > 1 ? `${cap(p[0])} ${cap(p[p.length - 1])}` : cap(p[0]);
+}
+
+/* ---------- estado ---------- */
+let ME = null, REF = null, ADMIN = false, DADOS = null;
+const estado = { segmento: "ELANCO", tipo: "mes", idx: null, rep: null };
+
+/* =====================================================================
+   API
+   ===================================================================== */
+function token() { try { return sessionStorage.getItem(CONFIG.TOKEN_KEY); } catch (_) { return null; } }
+function sairParaLogin() { try { sessionStorage.removeItem(CONFIG.TOKEN_KEY); } catch (_) {} location.assign(CONFIG.URL_LOGIN); }
+async function api(caminho) {
+  const r = await fetch(CONFIG.API_BASE + caminho, { headers: { Authorization: `Bearer ${token()}` } });
+  if (r.status === 401) { sairParaLogin(); throw new Error("sessão expirada"); }
+  if (!r.ok) {
+    let msg = `Erro ${r.status}`;
+    try { const j = await r.json(); if (j && j.detail) msg += `: ${typeof j.detail === "string" ? j.detail : JSON.stringify(j.detail)}`; } catch (_) {}
+    throw new Error(msg);
+  }
+  return r.json();
+}
+const N = (v) => (v === null || v === undefined || v === "" ? 0 : Number(v) || 0);
+function normalizar(resp) {
+  const reps = (resp && Array.isArray(resp.representantes) ? resp.representantes : []).map((r) => ({
+    cod_rep: Number(r.cod_rep),
+    representante: r.representante || `COD ${r.cod_rep}`,
+    segmento: r.segmento || "",
+    segmento_nome: r.segmento_nome || r.segmento || "",
+    faturamento: N(r.faturamento), quantidade: N(r.quantidade), clientes: N(r.clientes),
+    grupos: (r.grupos || []).map((g) => ({ grupo: g.grupo || "SEM GRUPO", faturamento: N(g.faturamento) })),
+    metas: (r.metas || []).map((m) => ({
+      id_meta: m.id_meta, id_cesta: m.id_cesta, cesta: m.cesta || "", descricao: m.descricao || "",
+      fabricante: m.fabricante || null, tipo: String(m.tipo || "VALOR").toUpperCase(),
+      ini: pDate(m.data_inicio), fim: pDate(m.data_fim),
+      meta: N(m.meta), realizado: N(m.realizado), unidades: m.unidades || "",
+    })),
+  }));
+  return { reps, data_referencia: resp ? resp.data_referencia : null };
+}
+
+/* =====================================================================
+   PERÍODOS
+   ===================================================================== */
+function opcoesPeriodo(tipo) {
+  const ano = REF.getFullYear(), mesRef = REF.getMonth();
+  const out = [];
+  if (tipo === "mes") {
+    for (let m = mesRef; m >= 0; m--) out.push({ idx: m, rot: `${MESES_LONGOS[m]} de ${ano}` });
+    for (let m = 11; m >= 0; m--) out.push({ idx: -12 + m, rot: `${MESES_LONGOS[m]} de ${ano - 1}` });
+  } else if (tipo === "tri") {
+    const triRef = Math.floor(mesRef / 3);
+    for (let t = triRef; t >= 0; t--) out.push({ idx: t, rot: `${t + 1}º trimestre de ${ano}` });
+    for (let t = 3; t >= 0; t--) out.push({ idx: -4 + t, rot: `${t + 1}º trimestre de ${ano - 1}` });
+  } else {
+    out.push({ idx: 0, rot: `${ano} (até ${MESES[mesRef]})` });
+    out.push({ idx: -1, rot: `${ano - 1}` });
+  }
+  return out;
+}
+function intervalo(tipo, idx) {
+  const ano = REF.getFullYear();
+  if (tipo === "mes") {
+    const a = idx < 0 ? ano - 1 : ano, m = idx < 0 ? idx + 12 : idx;
+    return { de: new Date(a, m, 1), ate: new Date(a, m + 1, 0), rot: `${MESES_LONGOS[m]} de ${a}` };
+  }
+  if (tipo === "tri") {
+    const a = idx < 0 ? ano - 1 : ano, t = idx < 0 ? idx + 4 : idx;
+    return { de: new Date(a, t * 3, 1), ate: new Date(a, t * 3 + 3, 0), rot: `${t + 1}º trimestre de ${a}` };
+  }
+  if (idx === -1) return { de: new Date(ano - 1, 0, 1), ate: new Date(ano - 1, 11, 31), rot: `ano de ${ano - 1}` };
+  // ano corrente: acumulado até o fim do mês de referência
+  return { de: new Date(ano, 0, 1), ate: new Date(ano, REF.getMonth() + 1, 0), rot: `${ano}, de janeiro a ${MESES_LONGOS[REF.getMonth()]}` };
+}
+/* fração do período que já passou (0..1); null = período encerrado */
+function esperado(ini, fim) {
+  if (REF >= fim) return null;
+  if (REF < ini) return 0;
+  return Math.min(1, dias(ini, REF) / dias(ini, fim));
+}
+
+/* =====================================================================
+   METAS: agrupamento e status
+   ===================================================================== */
+function grupoMetas(metas, de, ate) {
+  const dentro = new Map(), fora = new Map();
+  for (const m of metas) {
+    const inteira = m.ini >= de && m.fim <= ate;
+    const chave = inteira ? `${m.id_cesta}|${m.tipo}` : `${m.id_cesta}|${m.tipo}|${iso(m.ini)}|${iso(m.fim)}`;
+    const alvo = inteira ? dentro : fora;
+    if (!alvo.has(chave)) alvo.set(chave, { id_cesta: m.id_cesta, cesta: m.cesta, descricao: m.descricao, tipo: m.tipo, unidades: m.unidades, fabricante: m.fabricante, meta: 0, realizado: 0, ini: m.ini, fim: m.fim, partes: 0 });
+    const g = alvo.get(chave);
+    g.meta += m.meta; g.realizado += m.realizado; g.partes++;
+    if (m.ini < g.ini) g.ini = m.ini;
+    if (m.fim > g.fim) g.fim = m.fim;
+    if (!g.unidades && m.unidades) g.unidades = m.unidades;
+  }
+  const ord = (a, b) => (a.tipo === b.tipo ? b.meta - a.meta || a.cesta.localeCompare(b.cesta) : a.tipo === "VALOR" ? -1 : 1);
+  return { dentro: [...dentro.values()].sort(ord), fora: [...fora.values()].sort(ord) };
+}
+function avaliar(g) {
+  const p = g.meta > 0 ? (g.realizado / g.meta) * 100 : null;
+  const esp = esperado(g.ini, g.fim);
+  let s, txt;
+  if (p === null) { s = "s-fut"; txt = "Sem meta"; }
+  else if (p >= 100) { s = "s-ok"; txt = "Meta batida"; }
+  else if (esp === 0) { s = "s-fut"; txt = "Ainda não começou"; }
+  else {
+    const alvo = (esp === null ? 1 : esp) * 100;
+    if (p >= alvo) { s = "s-rit"; txt = "No ritmo"; }
+    else if (p >= alvo * 0.7) { s = "s-aten"; txt = esp === null ? "Não atingida" : "Abaixo do ritmo"; }
+    else { s = "s-crit"; txt = esp === null ? "Não atingida" : "Bem abaixo do ritmo"; }
+  }
+  return { p, esp, s, txt };
+}
+function fmtQtd(v, unidades) {
+  const u = String(unidades || "").split(",")[0].trim();
+  return `${int.format(v)}${u ? " " + u.toLowerCase() : ""}`;
+}
+const fmtV = (g, v) => (g.tipo === "VALOR" ? compacto(v) : fmtQtd(v, g.unidades));
+function nomeCesta(g) {
+  const bruto = String(g.descricao || "");
+  const d = /^Meta trimestral:\s*/i.test(bruto) ? bruto.replace(/^Meta trimestral:\s*/i, "") : "";
+  if (/^ITEM\s+\d+$/i.test(g.cesta) && d) return { t: d.replace(/\s*\([^)]*\)\s*$/, ""), s: `Código ${g.cesta.replace(/\D/g, "")}` };
+  if (/^ITEM\s+\d+$/i.test(g.cesta)) return { t: `Produto ${g.cesta.replace(/\D/g, "")}`, s: "Meta por produto" };
+  const BONITO = { SAUDE: "Saúde", REPRODUCAO: "Reprodução", PPD: "PPD", ENVU: "Envu" };
+  const t = BONITO[g.cesta] || (g.cesta.charAt(0) + g.cesta.slice(1).toLowerCase());
+  return { t, s: g.fabricante ? `Todos os produtos ${g.fabricante}` : "Cesta de produtos" };
+}
+function rotPeriodoMeta(ini, fim) {
+  const mesmoAno = ini.getFullYear() === fim.getFullYear();
+  if (mesmoAno && ini.getDate() === 1 && fim.getDate() === new Date(fim.getFullYear(), fim.getMonth() + 1, 0).getDate()) {
+    const nm = fim.getMonth() - ini.getMonth() + 1;
+    if (nm === 3 && ini.getMonth() % 3 === 0) return `${ini.getMonth() / 3 + 1}º trimestre de ${ini.getFullYear()} (${MESES[ini.getMonth()]}–${MESES[fim.getMonth()]})`;
+    if (nm === 1) return `${MESES_LONGOS[ini.getMonth()]} de ${ini.getFullYear()}`;
+    return `${MESES[ini.getMonth()]} a ${MESES[fim.getMonth()]} de ${ini.getFullYear()}`;
+  }
+  return `${dm(ini)}/${ini.getFullYear()} a ${dm(fim)}/${fim.getFullYear()}`;
+}
+function barraHTML(a, mini) {
+  const larg = a.p === null ? 0 : Math.max(0, Math.min(100, a.p));
+  const cls = a.s === "s-ok" ? "batida" : a.s === "s-crit" || a.s === "s-aten" ? "atras" : "";
+  const marca = a.esp !== null && a.esp > 0 && a.esp < 1 ? `<span class="esperado" style="left:${(a.esp * 100).toFixed(1)}%" title="Onde deveria estar hoje"></span>` : "";
+  return `<div class="${mini ? "mini-barra" : "barra-meta"}" role="img" aria-label="${pctTxt(a.p)} da meta"><i class="${cls}" style="width:${larg.toFixed(1)}%"></i>${marca}</div>`;
+}
+
+/* =====================================================================
+   RENDER — UM REPRESENTANTE
+   ===================================================================== */
+function resumoValor(lista) {
+  const v = lista.filter((g) => g.tipo === "VALOR");
+  const meta = v.reduce((s, g) => s + g.meta, 0), real = v.reduce((s, g) => s + g.realizado, 0);
+  const falta = v.reduce((s, g) => s + Math.max(0, g.meta - g.realizado), 0);
+  return { meta, real, falta, n: v.length };
+}
+function cardCesta(g) {
+  const a = avaliar(g), n = nomeCesta(g);
+  const falta = g.meta - g.realizado;
+  const pe = falta > 0 ? `Faltam <b>${fmtV(g, falta)}</b>` : `Passou <b>${fmtV(g, -falta)}</b>`;
+  return `<article class="cesta ${a.s}">
+    <div class="cab"><div class="titulo">${esc(n.t)}<small>${esc(n.s)}</small></div><span class="tag">${g.tipo === "VALOR" ? "R$" : "Qtde"}</span></div>
+    <div class="pct">${pctTxt(a.p)}</div>
+    ${barraHTML(a)}
+    <div class="linha2"><span><b>${fmtV(g, g.realizado)}</b> de ${fmtV(g, g.meta)}</span><span>${pe}</span></div>
+    <span class="status ${a.s}">${a.txt}${a.esp !== null && a.esp > 0 && a.s !== "s-ok" ? ` · esperado ${pctTxt(a.esp * 100)}` : ""}</span>
+  </article>`;
+}
+function tabelaItens(lista) {
+  const linhas = lista.map((g) => {
+    const a = avaliar(g), n = nomeCesta(g), falta = Math.max(0, g.meta - g.realizado);
+    return `<tr>
+      <td>${esc(n.t)}<span class="s2">${esc(n.s)}</span>${barraHTML(a, true)}</td>
+      <td class="num col-opc">${fmtV(g, g.meta)}</td>
+      <td class="num">${fmtV(g, g.realizado)}<span class="s2">${falta > 0 ? "faltam " + fmtV(g, falta) : "meta batida"}</span></td>
+      <td class="num"><span class="cel ${a.s}">${pctTxt(a.p)}</span></td>
+    </tr>`;
+  }).join("");
+  return `<div class="cartao" style="overflow-x:auto"><table class="tabela">
+    <thead><tr><th>Produto / cesta</th><th class="num col-opc">Meta</th><th class="num">Realizado</th><th class="num">%</th></tr></thead>
+    <tbody>${linhas}</tbody></table></div>`;
+}
+function secaoMetas(titulo, sub, lista) {
+  if (!lista.length) return "";
+  const valor = lista.filter((g) => g.tipo === "VALOR"), qtd = lista.filter((g) => g.tipo !== "VALOR");
+  // muitas metas de quantidade por produto ficam melhor em tabela
+  const qtdHTML = qtd.length > 3 ? tabelaItens(qtd) : (qtd.length ? `<div class="cestas">${qtd.map(cardCesta).join("")}</div>` : "");
+  return `<section class="secao">
+    <div class="secao-topo"><div><h2>${esc(titulo)}</h2>${sub ? `<p class="sub">${sub}</p>` : ""}</div></div>
+    ${valor.length ? `<div class="cestas">${valor.map(cardCesta).join("")}</div>` : ""}
+    ${qtdHTML}
+  </section>`;
+}
+function renderRep(rep, per) {
+  const { dentro, fora } = grupoMetas(rep.metas, per.de, per.ate);
+  const r = resumoValor(dentro);
+  const aR = avaliar({ meta: r.meta, realizado: r.real, ini: per.de, fim: per.ate });
+  const todas = [...dentro, ...fora];
+  const batidas = todas.filter((g) => g.meta > 0 && g.realizado >= g.meta).length;
+
+  const kpis = `<section class="kpis" aria-label="Resumo">
+    <div class="kpi destaque">
+      <div class="nome"><svg aria-hidden="true"><use href="#i-dinheiro"/></svg>Faturamento total</div>
+      <div class="valor" title="${brl.format(rep.faturamento)}">${compacto(rep.faturamento)}</div>
+      <div class="det">Todos os produtos · ${int.format(rep.clientes)} cliente${rep.clientes === 1 ? "" : "s"}</div>
+    </div>
+    <div class="kpi meta">
+      <div class="nome"><svg aria-hidden="true"><use href="#i-alvo"/></svg>Metas em R$ do período</div>
+      ${r.n ? `<div class="topo-meta"><div class="valor">${pctTxt(aR.p)}</div><div class="de"><b>${compacto(r.real)}</b> de ${compacto(r.meta)}</div></div>
+      ${barraHTML(aR)}
+      <div class="det">${r.falta > 0 ? `Faltam ${compacto(r.falta)} somando as cestas abaixo da meta` : "Todas as cestas em R$ batidas"}</div>`
+      : `<div class="valor" style="font-size:20px;color:var(--cinza-2)">Sem metas em R$</div><div class="det">Nenhuma meta em valor dentro deste período.</div>`}
+    </div>
+    <div class="kpi">
+      <div class="nome"><svg aria-hidden="true"><use href="#i-cesta"/></svg>Metas batidas</div>
+      <div class="valor">${batidas} de ${todas.length}</div>
+      <div class="det">${todas.length ? "Somando cestas e produtos" : "Nenhuma meta no período"}</div>
+    </div>
+  </section>`;
+
+  const subDentro = estado.tipo === "mes" ? "" : "Metas mensais somadas no período.";
+  let html = kpis;
+  if (!todas.length) {
+    html += `<div class="vazio"><b>Sem metas cadastradas para este período.</b>O faturamento acima continua valendo. Escolha outro período para ver as metas.</div>`;
+  }
+  html += secaoMetas(`Metas de ${per.rot}`, subDentro, dentro);
+
+  // metas que vão além do período escolhido (ex.: trimestrais vistas no mês)
+  const porPeriodo = new Map();
+  for (const g of fora) {
+    const k = `${iso(g.ini)}|${iso(g.fim)}`;
+    if (!porPeriodo.has(k)) porPeriodo.set(k, []);
+    porPeriodo.get(k).push(g);
+  }
+  for (const lista of porPeriodo.values()) {
+    const g0 = lista[0];
+    html += secaoMetas(`Metas do ${rotPeriodoMeta(g0.ini, g0.fim)}`.replace("Metas do de ", "Metas de "),
+      `Meta de período maior que o escolhido: o realizado é o acumulado de ${dm(g0.ini)} até hoje.`, lista);
+  }
+
+  if (rep.grupos.length) {
+    const tot = rep.grupos.reduce((s, g) => s + Math.max(0, g.faturamento), 0) || 1;
+    const max = Math.max(...rep.grupos.map((g) => g.faturamento), 1);
+    html += `<section class="secao"><div class="secao-topo"><div><h2>Faturamento por grupo de produto</h2><p class="sub">Tudo o que o representante vendeu no período, líquido de devoluções.</p></div></div>
+      <div class="cartao"><ul class="grupos">${rep.grupos.map((g) => `<li>
+        <span class="g-nome">${esc(g.grupo)}</span>
+        <span class="g-val ${g.faturamento < 0 ? "neg" : ""}">${compacto(g.faturamento)}</span>
+        <span class="g-pct">${g.faturamento > 0 ? pctTxt((g.faturamento / tot) * 100) : "—"}</span>
+        <span class="trilha"><i style="width:${Math.max(0, (g.faturamento / max) * 100).toFixed(1)}%"></i></span>
+      </li>`).join("")}</ul></div></section>`;
+  }
+  return html;
+}
+
+/* =====================================================================
+   CONTROLES E FLUXO
+   ===================================================================== */
+function preencherPeriodos() {
+  const sel = document.getElementById("sel-periodo");
+  const ops = opcoesPeriodo(estado.tipo);
+  if (estado.idx === null || !ops.some((o) => o.idx === estado.idx)) estado.idx = ops[0].idx;
+  sel.innerHTML = ops.map((o) => `<option value="${o.idx}" ${o.idx === estado.idx ? "selected" : ""}>${esc(o.rot)}</option>`).join("");
+  document.getElementById("rot-sel").textContent = { mes: "Mês", tri: "Trimestre", ano: "Ano" }[estado.tipo];
+  document.querySelectorAll("#seg-tipo button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.t === estado.tipo)));
+  document.querySelectorAll("#seg-segmento button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.s === estado.segmento)));
+}
+function renderReps() {
+  const box = document.getElementById("reps");
+  const reps = DADOS ? DADOS.reps : [];
+  const mostrar = ADMIN || reps.length > 1;
+  box.hidden = !mostrar;
+  if (!mostrar) return;
+  box.innerHTML = reps.map((r) => `<button class="chip" type="button" data-rep="${r.cod_rep}" aria-pressed="${String(estado.rep) === String(r.cod_rep)}">${esc(nomeCurto(r.representante))}</button>`).join("");
+}
+function render() {
+  const per = intervalo(estado.tipo, estado.idx);
+  document.getElementById("periodo").textContent = `${dm(per.de)}/${per.de.getFullYear()} a ${dm(per.ate)}/${per.ate.getFullYear()}`;
+  const alvo = document.getElementById("conteudo");
+  const reps = DADOS ? DADOS.reps : [];
+  if (!reps.length) {
+    alvo.innerHTML = ADMIN
+      ? `<div class="vazio"><b>Nenhum representante ativo neste segmento.</b>Cadastre os representantes pela área administrativa.</div>`
+      : `<div class="vazio"><b>A lâmina de avaliação é exclusiva da veterinária (Elanco e MSD).</b>Seu código ainda não está vinculado a um desses segmentos. <a href="vendas.html">Voltar para vendas</a></div>`;
+    document.getElementById("titulo").textContent = "Lâmina de avaliação";
+    document.getElementById("selo-seg").textContent = ADMIN ? estado.segmento : "—";
+    renderReps();
+    return;
+  }
+  if (estado.rep === null || !reps.some((r) => r.cod_rep === Number(estado.rep))) estado.rep = reps[0].cod_rep;
+  renderReps();
+  const seg = ADMIN ? estado.segmento : reps[0].segmento;
+  document.getElementById("selo-seg").textContent = seg === "MSD" ? "MSD" : "Elanco";
+  const rep = reps.find((r) => r.cod_rep === Number(estado.rep));
+  document.getElementById("titulo").textContent = nomeCurto(rep.representante) || rep.representante;
+  alvo.innerHTML = renderRep(rep, per);
+}
+let pedido = 0;
+async function buscar() {
+  const per = intervalo(estado.tipo, estado.idx);
+  const meu = ++pedido;
+  const alvo = document.getElementById("conteudo");
+  alvo.classList.add("carregando");
+  try {
+    const q = `de=${iso(per.de)}&ate=${iso(per.ate)}`;
+    const resp = CONFIG.MODO_DEMO ? gerarDemo(per) : await api(ADMIN ? `/admin/vet/lamina?segmento=${encodeURIComponent(estado.segmento)}&${q}` : `/vet/lamina?${q}`);
+    if (meu !== pedido) return;
+    DADOS = normalizar(resp);
+    document.getElementById("erro-carga").hidden = true;
+    render();
+  } catch (e) {
+    if (meu !== pedido) return;
+    mostrarErro(e);
+  } finally {
+    if (meu === pedido) alvo.classList.remove("carregando");
+  }
+}
+function mostrarErro(e) {
+  console.error(e);
+  const box = document.getElementById("erro-carga");
+  box.innerHTML = `<b>Não foi possível carregar a lâmina.</b><span></span><br><button type="button">Tentar novamente</button>`;
+  box.querySelector("span").textContent = e && e.message ? e.message : String(e);
+  box.querySelector("button").addEventListener("click", () => buscar());
+  box.hidden = false;
+}
+
+document.getElementById("seg-tipo").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b || b.dataset.t === estado.tipo) return;
+  estado.tipo = b.dataset.t; estado.idx = null; preencherPeriodos(); buscar();
+});
+document.getElementById("sel-periodo").addEventListener("change", (e) => { estado.idx = Number(e.target.value); buscar(); });
+document.getElementById("seg-segmento").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b || b.dataset.s === estado.segmento) return;
+  estado.segmento = b.dataset.s; estado.rep = null; preencherPeriodos(); buscar();
+});
+document.getElementById("reps").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-rep]"); if (!b) return;
+  estado.rep = Number(b.dataset.rep); render();
+});
+document.getElementById("btn-sair").addEventListener("click", async () => {
+  if (!CONFIG.MODO_DEMO) { try { await fetch(`${CONFIG.API_BASE}/auth/logout`, { method: "POST", headers: { Authorization: `Bearer ${token()}` } }); } catch (_) {} }
+  sairParaLogin();
+});
+
+/* =====================================================================
+   DEMONSTRAÇÃO (só com MODO_DEMO = true; dados fictícios)
+   ===================================================================== */
+function gerarDemo(per) {
+  let seed = 11; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const cestas = estado.segmento === "MSD" || !ADMIN && false
+    ? [[1, "SAUDE", null, 400000], [2, "PPD", null, 260000], [3, "EXZOLT", null, 90000], [4, "SOLUTION", null, 30000], [5, "REPRODUCAO", null, 15000], [6, "ALLFLEX", "ALLFLEX", 8000]]
+    : [[11, "ELANCO", "ELANCO", 280000], [12, "ENVU", "ENVU", 40000]];
+  const itens = [[21, "ITEM 330", "IVOMEC GOLD 500ML", "FR", 1000], [22, "ITEM 381", "COBACTAN 50ML", "FR", 900], [23, "ITEM 3107", "CYDECTIN NF 1L", "UN", 150], [24, "ITEM 3115", "TOPLINE POUR ON", "UN", 1100]];
+  const nomes = estado.segmento === "MSD" ? ["CLAUDIO ALVES FIGUEIREDO", "JAIR JOSE DE OLIVEIRA JUNIOR", "ALTAIR GIOVANI OSINSKI", "ELOY PESSOA GUIDES", "LEANDRO ELPIDIO DE SOUZA"] : ["JOSE LUIZ SANTOS OLIVEIRA", "TIAGO JACINTO DE BARROS", "RAFAEL FRANCIO LOPES", "BRUNA DAFFARA", "LUIZ CARLOS BERTOL JUNIOR", "FABIANA BACAL"];
+  const reps = nomes.map((nome, i) => {
+    const metas = [];
+    for (let d = new Date(per.de); d <= per.ate; d = new Date(d.getFullYear(), d.getMonth() + 1, 1)) {
+      const fimMes = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+      const fr = REF < d ? 0 : REF >= fimMes ? 1 : dias(d, REF) / dias(d, fimMes);
+      for (const [id, c, fab, base] of cestas) {
+        const meta = Math.round(base * (0.6 + rnd() * 0.8) / 100) * 100;
+        metas.push({ id_meta: metas.length + 1, id_cesta: id, cesta: c, fabricante: fab, tipo: "VALOR", data_inicio: iso(d), data_fim: iso(fimMes), meta, realizado: Math.round(meta * fr * (0.45 + rnd() * 0.9)) });
+      }
+    }
+    if (estado.segmento !== "MSD" && per.ate >= new Date(2026, 9, 1) && per.de <= new Date(2026, 11, 31)) {
+      for (const [id, c, desc, un, base] of itens) {
+        const meta = Math.round(base * (0.5 + rnd()) / 10) * 10, fr = Math.min(1, dias(new Date(2026, 9, 1), REF) / 92);
+        metas.push({ id_meta: 900 + id, id_cesta: id, cesta: c, descricao: `Meta trimestral: ${desc} (${un})`, tipo: "QUANTIDADE", data_inicio: "2026-10-01", data_fim: "2026-12-31", meta, realizado: Math.round(meta * fr * (0.3 + rnd() * 1.2)), unidades: un });
+      }
+    }
+    const fat = metas.filter((m) => m.tipo === "VALOR").reduce((s, m) => s + m.realizado, 0) * (1.15 + rnd() * 0.3);
+    return { cod_rep: [11604, 2567, 4511, 4513, 11403, 4512][i] || 95 + i, representante: nome, segmento: estado.segmento, segmento_nome: estado.segmento,
+      faturamento: fat, quantidade: 0, clientes: 8 + Math.floor(rnd() * 25),
+      grupos: [["VETERINARIA - PECUARIA", 0.78], ["VETERINARIA - ESPECIAL PET", 0.12], ["DOMISSANITARIO", 0.07], ["DEFENSIVOS AGRICOLAS", 0.03]].map(([g, p]) => ({ grupo: g, faturamento: fat * p })),
+      metas };
+  });
+  return { data_referencia: iso(REF), representantes: ADMIN ? reps : reps.slice(0, 1) };
+}
+
+/* ---------- início ---------- */
+(async () => {
+  try {
+    if (CONFIG.MODO_DEMO) {
+      ME = { nome: "Demonstração", admin: true, data_referencia: "2026-11-01" };
+      document.getElementById("demo-aviso").hidden = false;
+    } else {
+      if (!token()) { sairParaLogin(); return; }
+      ME = await api("/me");
+    }
+    ADMIN = !!ME.admin;
+    REF = pDate(ME.data_referencia || iso(new Date()));
+    document.getElementById("data-ref").textContent = `Dados atualizados até ${REF.toLocaleDateString("pt-BR")}`;
+    document.getElementById("seg-segmento").hidden = !ADMIN;
+    preencherPeriodos();
+    await buscar();
+  } catch (e) { mostrarErro(e); }
+})();
+</script>
+</body>
+</html>
