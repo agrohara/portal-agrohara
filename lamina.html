@@ -370,7 +370,11 @@ const estado = { segmento: "ELANCO", tipo: "mes", idx: null, rep: null, aba: "re
    API
    ===================================================================== */
 function token() { try { return sessionStorage.getItem(CONFIG.TOKEN_KEY); } catch (_) { return null; } }
-function sairParaLogin() { try { sessionStorage.removeItem(CONFIG.TOKEN_KEY); } catch (_) {} location.assign(CONFIG.URL_LOGIN); }
+function sairParaLogin(voltarAqui) {
+  try { sessionStorage.removeItem(CONFIG.TOKEN_KEY); } catch (_) {}
+  // sem sessão: vai ao login e pede para voltar à lâmina depois (o login só aceita páginas conhecidas)
+  location.assign(voltarAqui === false ? CONFIG.URL_LOGIN : `${CONFIG.URL_LOGIN}?volta=lamina.html`);
+}
 async function api(caminho) {
   const r = await fetch(CONFIG.API_BASE + caminho, { headers: { Authorization: `Bearer ${token()}` } });
   if (r.status === 401) { sairParaLogin(); throw new Error("sessão expirada"); }
@@ -903,7 +907,7 @@ document.getElementById("reps").addEventListener("click", async (e) => {
 });
 document.getElementById("btn-sair").addEventListener("click", async () => {
   if (!CONFIG.MODO_DEMO) { try { await fetch(`${CONFIG.API_BASE}/auth/logout`, { method: "POST", headers: { Authorization: `Bearer ${token()}` } }); } catch (_) {} }
-  sairParaLogin();
+  sairParaLogin(false);
 });
 
 /* ---------- carregamento ---------- */

@@ -435,6 +435,18 @@ const CONFIG = {
   TOKEN_KEY: "portal_agrohara_access_token",
 };
 
+/* Página de destino depois do login.
+   ?volta=lamina.html leva de volta à lâmina; só páginas desta lista são aceitas
+   (qualquer outro valor é ignorado e vai para vendas.html). */
+const PAGINAS_VOLTA = ["vendas.html", "lamina.html"];
+function destinoAposLogin() {
+  try {
+    const v = new URLSearchParams(location.search).get("volta");
+    if (v && PAGINAS_VOLTA.includes(v)) return v;
+  } catch (_) {}
+  return CONFIG.REDIRECT_APOS_LOGIN;
+}
+
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => document.querySelectorAll(s);
 
@@ -552,7 +564,7 @@ $("#form-login").addEventListener("submit", async (ev) => {
           carregando(btn, false);
           return;
         }
-        window.location.assign(CONFIG.REDIRECT_APOS_LOGIN);
+        window.location.assign(destinoAposLogin());
       }, 350);
       return;
     }
