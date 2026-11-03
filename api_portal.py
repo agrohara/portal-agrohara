@@ -3247,3 +3247,167 @@ def admin_vet_status_meta(
     )
 
     return {"status": "ok", **resultado}
+
+
+# ============================================================
+# VETERINARIA - bloco vet v2 (03/11/2026)
+# - GET /vet/cestas        : cestas do segmento do vendedor + itens
+# - GET /admin/vet/vendas  : vendas de um representante vet (admin)
+# ============================================================
+
+@app.get("/vet/cestas")
+def vet_cestas(
+    segmento: str | None = None,
+    authorization: str | None = Header(default=None)
+):
+    """Cestas ativas e seus itens.
+    Vendedor: segmento vem dos cod_reps da sessao.
+    Admin: pode informar ?segmento=ELANCO|MSD."""
+
+    usuario = validar_sessao(
+        authorization
+    )
+
+    con = conectar_banco()
+    cur = con.cursor()
+
+    try:
+        if segmento and usuario.get("admin"):
+            ids = [vet_id_segmento(cur, segmento)]
+        else:
+            cur.execute("""
+                SELECT DISTINCT id_segmento
+                FROM portal.vet_representantes
+                WHERE ativo = true
+                  AND cod_rep = ANY(%s::integer[])
+            """, (usuario["cod_reps"],))
+
+            ids = [r[0] for r in cur.fetchall()]
+
+        if not ids:
+            return {"cestas": []}
+
+        cur.execute("""
+            SELECT
+                c.id_cesta,
+                s.codigo,
+                c.nome,
+                c.descricao,
+                c.fabricante,
+                COALESCE(
+                    ARRAY_AGG(ci.item_cod ORDER BY ci.item_cod)
+                        FILTER (WHERE ci.item_cod IS NOT NULL),
+                    ARRAY[]::integer[]
+                )
+            FROM portal.vet_cestas c
+            JOIN portal.vet_segmentos s
+              ON s.id_segmento = c.id_segmento
+            LEFT JOIN portal.vw_vet_cesta_itens ci
+              ON ci.id_cesta = c.id_cesta
+            WHERE c.ativo = true
+              AND c.id_segmento = ANY(%s::smallint[])
+            GROUP BY c.id_cesta, s.codigo, c.nome, c.descricao, c.fabricante
+            ORDER BY s.codigo, c.nome
+        """, (ids,))
+
+        linhas = cur.fetchall()
+
+    finally:
+        con.close()
+
+    return {
+        "cestas": [
+            {
+                "id_cesta": r[0],
+                "segmento": r[1],
+                "nome": r[2],
+                "descricao": r[3],
+                "fabricante": r[4],
+                "item_cods": [int(x) for x in (r[5] or [])]
+            }
+            for r in linhas
+        ]
+    }
+
+
+@app.get("/admin/vet/vendas")
+def admin_vet_vendas(
+    cod_rep: int,
+    de: date,
+    ate: date,
+    authorization: str | None = Header(default=None)
+):
+    """Mesmo formato de /vendas/itens, para um representante
+    vinculado a ELANCO/MSD. Somente admin."""
+
+    exigir_admin(
+        authorization
+    )
+
+    if ate < de or (ate - de).days > 1100:
+        raise HTTPException(
+            status_code=400,
+            detail="Periodo invalido (maximo 1100 dias)."
+        )
+
+    con = conectar_banco()
+    cur = con.cursor()
+
+    try:
+        cur.execute("""
+            SELECT 1
+            FROM portal.vet_representantes
+            WHERE cod_rep = %s
+        """, (cod_rep,))
+
+        if not cur.fetchone():
+            raise HTTPException(
+                status_code=404,
+                detail="Representante nao vinculado a ELANCO/MSD."
+            )
+
+        cur.execute("""
+            SELECT
+                estab,
+                seqnota,
+                nota,
+                serie,
+                tipo_mov,
+                dtemissao,
+                prazopagto,
+                cod_cliente,
+                cliente_nome,
+                cod_grupo,
+                grupo_familiar,
+                cliente_final,
+                item_cod,
+                item,
+                unidade,
+                grupo,
+                subgrupo,
+                COALESCE(quantidade, 0)::double precision,
+                COALESCE(valor_total_item, 0)::double precision
+            FROM portal.vendas
+            WHERE cod_rep = %s
+              AND dtemissao >= %s
+              AND dtemissao <= %s
+            ORDER BY dtemissao, estab, seqnota, seqnotaitem
+        """, (cod_rep, de, ate))
+
+        linhas = cur.fetchall()
+
+    finally:
+        con.close()
+
+    colunas = [
+        "estab", "seqnota", "nota", "serie", "tipo_mov",
+        "dtemissao", "prazopagto", "cod_cliente", "cliente_nome",
+        "cod_grupo", "grupo_familiar", "cliente_final", "item_cod",
+        "item", "unidade", "grupo", "subgrupo", "quantidade",
+        "valor_total_item"
+    ]
+
+    return [
+        dict(zip(colunas, linha))
+        for linha in linhas
+    ]
